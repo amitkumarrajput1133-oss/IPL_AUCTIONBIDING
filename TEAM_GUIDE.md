@@ -1,40 +1,41 @@
-# Team Collaboration & Roles Guide
+# 🏏 Team Collaboration & Roles Guide (12-Week IPL Auction System)
 
-This directory structure divides the **IPL Auction System** project among 5 team members based on their specific roles. Each member has their own assigned folder under the `/team` directory containing their dashboard instructions, directory targets, and responsibilities.
+This directory structure divides the **IPL Auction System** project among 5 team members based on their specific roles. Each member has their own assigned folder under the `/team` directory containing their dedicated copy of work, code files, and Week 1 AI Mentor action plans.
 
 ---
 
-## 👥 Team Member Roles & Dashboards
+## 👥 5-Member Team Roles & Assigned Workspace Folders
 
-1. **[Member 1: Real-Time Configuration & Security (You)](file:///c:/Users/hp/ipl-auction-system/team/member-1-config/README.md)**
-   - **GitHub Handle:** `@srijansrivastava1234`
-   - **Target Folder:** `backend/src/main/java/com/ipl/auction/config/`
-   - **Responsibilities:** Security, Custom JWT filters, WebSocket interceptors, backend properties.
+1. **[Member 1: Project Lead & Core Backend REST API Developer](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-1-project-lead-core-backend/README.md)**
+   - **Assigned Folder:** [`team/member-1-project-lead-core-backend`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-1-project-lead-core-backend/)
+   - **Git Branch:** `feature/core-backend` (Collaborating on `main` / `develop`)
+   - **Assigned Scope:** Spring Boot architecture & folder structure, Team CRUD REST APIs, Player CRUD REST APIs, purse deduction logic, squad constraints (max 25, overseas max 8), Global Exception Handler (`@ControllerAdvice`).
 
-2. **[Member 2: Backend Controller & Service APIs](file:///c:/Users/hp/ipl-auction-system/team/member-2-backend-apis/README.md)**
-   - **GitHub Handle:** `@amitkumarrajput1133-oss`
-   - **Target Folders:** `backend/src/main/java/com/ipl/auction/controller/` and `backend/src/main/java/com/ipl/auction/service/`
-   - **Responsibilities:** API Controllers, Business Logic validation rules (bids, budget limits, user profiles).
+2. **[Member 2: Security & Authentication Specialist](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-2-security-authentication-specialist/README.md)**
+   - **Assigned Folder:** [`team/member-2-security-authentication-specialist`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-2-security-authentication-specialist/)
+   - **Git Branch:** `feature/security-auth`
+   - **Assigned Scope:** Spring Security 6 filter chain, `PasswordEncoder` (BCrypt), JWT token utilities (`TokenUtil`), JWT request filter (`TokenAuthenticationFilter`), registration & login REST APIs (`/api/v1/auth/**`), role-based access control (`ADMIN` vs `TEAM_OWNER`).
 
-3. **[Member 3: Database Schema & JPA Repositories](file:///c:/Users/hp/ipl-auction-system/team/member-3-database/README.md)**
-   - **GitHub Handle:** `@sharmaakhilesh8273-lgtm`
-   - **Target Folders:** `backend/src/main/java/com/ipl/auction/model/` and `backend/src/main/java/com/ipl/auction/repository/`
-   - **Responsibilities:** JPA entity schema design, query definitions, pessimistic write locks, DB local data initializer.
+3. **[Member 3: Database & Bidding Engine Developer](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-3-database-bidding-engine-developer/README.md)**
+   - **Assigned Folder:** [`team/member-3-database-bidding-engine-developer`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-3-database-bidding-engine-developer/)
+   - **Git Branch:** `feature/database-bidding`
+   - **Assigned Scope:** MySQL ER diagram & DDL SQL schema (`schema.sql`), JPA entities & Hibernate mappings (`User`, `Team`, `Player`, `Bid`, `Auction`), pessimistic row locks (`@Lock(LockModeType.PESSIMISTIC_WRITE)`), live bidding REST APIs (`/api/v1/bids/**`), bidding increment rules & race condition prevention.
 
-4. **[Member 4: Frontend UI Components & CSS](file:///c:/Users/hp/ipl-auction-system/team/member-4-frontend-ui/README.md)**
-   - **GitHub Handle:** `@anshikapandey-bit`
-   - **Target Folders:** `frontend/src/components/` and style files (`index.css`, `App.css`)
-   - **Responsibilities:** Designing modular React components (`Login`, `Leaderboard`, `PlayerCard`, `BiddingConsole`), aesthetic styling.
+4. **[Member 4: Frontend & API Integration Lead](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-4-frontend-api-integration-lead/README.md)**
+   - **Assigned Folder:** [`team/member-4-frontend-api-integration-lead`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-4-frontend-api-integration-lead/)
+   - **Git Branch:** `feature/frontend-ui`
+   - **Assigned Scope:** Vite + React SPA architecture, Cybernetic Dark Cricket Design System (`index.css`), Auth UI (`Login.jsx`), JWT storage & Bearer header interceptor, Live Player Card (`PlayerCard.jsx`), Orbit Arena (`OrbitArena.jsx`), Bidding Console (`BiddingConsole.jsx`), Franchise Leaderboard & Purse Tracker (`Leaderboard.jsx`).
 
-5. **[Member 5: Frontend State & WebSockets Integration](file:///c:/Users/hp/ipl-auction-system/team/member-5-frontend-sockets/README.md)**
-   - **GitHub Handle:** `@suryansh-svg`
-   - **Target Files:** `frontend/src/App.jsx` (Shared Integration), custom React hooks/context.
-   - **Responsibilities:** WebSocket connections, STOMP client integrations, real-time message handling, session cache storage.
+5. **[Member 5: QA, Testing & API Documentation Lead](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-5-qa-testing-api-documentation-lead/README.md)**
+   - **Assigned Folder:** [`team/member-5-qa-testing-api-documentation-lead`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-5-qa-testing-api-documentation-lead/)
+   - **Git Branch:** `feature/qa-testing-docs`
+   - **Assigned Scope:** OpenAPI / Swagger 3 integration (`OpenApiConfig.java`), automated Postman collection & environment, unit tests (JUnit 5 + Mockito), integration tests (`@SpringBootTest` + `MockMvc`), edge-case validation suites, GitHub Actions CI workflow (`.github/workflows/ci.yml`), and `CODEOWNERS`.
 
 ---
 
 ## 🛠️ Git Collaboration Workflow
-To prevent conflicts while working simultaneously:
-- **Work on branches:** Each member should create and commit to their own branch (e.g. `feature/websocket-auth`, `feature/ui-adjustments`).
-- **Submit Pull Requests:** When a task is complete, create a Pull Request on GitHub targeting `main`.
-- **CODEOWNERS:** The repository is configured with a `.github/CODEOWNERS` file. Pushing modifications to specific paths will automatically request reviews from the assigned owner.
+To prevent merge collisions while working simultaneously:
+- **Feature Branches**: Each member works strictly within their assigned Git feature branch.
+- **Strict Boundaries**: Never modify code outside your assigned role scope without coordination.
+- **Pull Requests**: Submit PRs targeting `develop` (or `main`) with passing automated CI builds.
+- **Week 1 Unlocking**: Complete Week 1 verification, push to GitHub, and notify mentor to unlock Week 2 tasks.

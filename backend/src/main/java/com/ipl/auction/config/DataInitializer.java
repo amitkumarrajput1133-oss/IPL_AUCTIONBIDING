@@ -41,6 +41,7 @@ public class DataInitializer implements CommandLineRunner {
 
         // 2. Seed All 10 Official IPL Teams
 
+        
         // Seed All 10 Official IPL Teams
         List<Team> iplTeams = Arrays.asList(
                 new Team("Chennai Super Kings", new BigDecimal("1000000000")),
