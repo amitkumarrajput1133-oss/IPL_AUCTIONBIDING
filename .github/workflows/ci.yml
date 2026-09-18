@@ -1,4 +1,4 @@
-name: 🏏 IPL Auction Software CI Pipeline
+name: IPL Auction Software CI Pipeline
 
 on:
   push:
@@ -17,29 +17,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Checkout Source Repository
+      - name: Checkout Source Repository
         uses: actions/checkout@v4
 
-      - name: ☕ Setup Java 25 (Eclipse Temurin)
+      - name: Setup Java 17 (Eclipse Temurin)
         uses: actions/setup-java@v4
         with:
-          java-version: '25'
+          java-version: '17'
           distribution: 'temurin'
           cache: maven
 
-      - name: ⚙️ Grant Executable Rights to Maven Wrapper
+      - name: Grant Executable Rights to Maven Wrapper
         run: chmod +x mvnw
 
-      - name: 🔨 Compile Application
-        run: ./mvnw clean compile -DskipTests
+      - name: Compile Backend Application
+        run: ./mvnw clean compile -f backend/pom.xml -DskipTests
 
-      - name: 🧪 Run Automated JUnit 5 & Concurrency Tests
-        run: ./mvnw test
+      - name: Run Automated JUnit 5 & Concurrency Tests
+        run: ./mvnw test -f backend/pom.xml
 
-      - name: 📊 Upload Surefire Test Results
+      - name: Upload Surefire Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: surefire-reports
-          path: target/surefire-reports/
+          path: backend/target/surefire-reports/
           retention-days: 7
