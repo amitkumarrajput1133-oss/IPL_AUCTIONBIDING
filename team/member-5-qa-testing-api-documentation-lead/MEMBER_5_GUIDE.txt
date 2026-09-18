@@ -1,0 +1,125 @@
+================================================================================
+MEMBER 5: QA, TESTING & API DOCUMENTATION LEAD
+Branch: feature/qa-testing-docs
+Folder: team/member-5-qa-testing-api-documentation-lead
+================================================================================
+
+1. WHO YOU ARE & WHAT YOU DO (IN SIMPLE WORDS)
+--------------------------------------------------------------------------------
+You are the Quality Inspector & Automation Guardian of the team.
+Your job is to make sure nothing is broken. You write automated tests to try and 
+break the bidding engine (like bidding with negative money or when purse is empty), 
+create the interactive Swagger API documentation page, and set up GitHub Actions CI 
+to automatically test everyone's code whenever they push to GitHub.
+
+
+2. WHAT YOU MUST NEVER TOUCH (STRICT BOUNDARIES)
+--------------------------------------------------------------------------------
+Other members have their own jobs. Do NOT write code for:
+- Member 1's job: Team or Player CRUD business controllers or services.
+- Member 2's job: Spring Security filter chain or JWT token utility code.
+- Member 3's job: MySQL DDL schema scripts or live bidding concurrency algorithms.
+- Member 4's job: Frontend HTML, CSS, JavaScript, or React code.
+
+
+3. TOOLS YOU USE
+--------------------------------------------------------------------------------
+- OpenAPI 3 / Swagger: Interactive API documentation at /swagger-ui/index.html.
+- JUnit 5: Java framework to write and run automated unit tests.
+- Mockito: Creates simulated ('mock') databases to test services fast in isolation.
+- GitHub Actions: Automated cloud robot running tests on Ubuntu containers on every push.
+- Postman: For automated API collection testing.
+
+
+4. YOUR CODE FILES & WHAT THEY DO (IN PLAIN ENGLISH)
+--------------------------------------------------------------------------------
+- src/test/java/.../service/BidServiceTest.java: 
+  Tests the bidding engine: asserts that bids below base price fail, teams cannot 
+  outbid themselves, and purse overflow is rejected.
+
+- src/test/java/.../service/PlayerServiceTest.java: 
+  Tests player sales: verifies that sold players deduct money from the team, 
+  and blocks adding a 26th player or a 9th overseas player.
+
+- src/main/java/.../config/OpenApiConfig.java: 
+  Configures Swagger 3 so it shows API documentation and lets users test 
+  protected routes by entering a Bearer JWT token.
+
+- .github/workflows/ci.yml: 
+  The CI Pipeline script. Automatically spins up an Ubuntu cloud runner with 
+  Java 17, compiles code, and runs tests on every Pull Request.
+
+- .github/CODEOWNERS: 
+  Enforces that Member 2 reviews security changes, Member 3 reviews database 
+  changes, etc., before code merges into main.
+
+
+5. YOUR POM.XML DEPENDENCIES (EXPLAINED SIMPLY)
+--------------------------------------------------------------------------------
+1. springdoc-openapi-starter-webmvc-ui: 
+   Generates the interactive Swagger UI webpage at /swagger-ui/index.html.
+
+2. spring-boot-starter-webmvc-test: 
+   Core testing starter containing JUnit 5, Mockito, and AssertJ.
+
+3. spring-boot-starter-data-jpa-test: 
+   Allows testing database repositories using @DataJpaTest.
+
+4. spring-boot-starter-security-test: 
+   Allows testing protected endpoints by simulating logged-in users with @WithMockUser.
+
+
+6. GIT COMMANDS YOU NEED TO RUN
+--------------------------------------------------------------------------------
+# Switch to your feature branch:
+git checkout develop
+git checkout -b feature/qa-testing-docs
+
+# Check what files you modified:
+git status
+
+# Add your changes:
+git add src/test/ .github/ pom.xml
+
+# Save your changes with a message:
+git commit -m "test(qa): add JUnit 5 test suites, Swagger 3 config, and GitHub Actions CI workflow"
+
+# Push your branch to GitHub:
+git push origin feature/qa-testing-docs
+
+
+7. EXACT WORDS TO SAY TO YOUR MENTOR (PRESENTATION SCRIPT)
+--------------------------------------------------------------------------------
+"Hello Sir. As Member 5 and QA, Testing & API Documentation Lead:
+1. I configured SpringDoc OpenAPI 3 / Swagger UI at /swagger-ui/index.html with Bearer JWT security scheme support so anyone can test our endpoints interactively.
+2. I authored automated unit test suites using JUnit 5 and Mockito in BidServiceTest and PlayerServiceTest.
+3. I specifically verified edge cases: asserting that transactions throw exceptions when a team attempts to outbid itself, bid higher than its remaining purse, or breach the 25-player / 8-overseas limits.
+4. I set up our GitHub Actions CI/CD Pipeline (ci.yml) and .github/CODEOWNERS so that all unit tests must pass in an automated Ubuntu container before any code can be merged into main."
+
+
+8. TOP QUESTIONS THE MENTOR CAN ASK YOU & HOW TO ANSWER
+--------------------------------------------------------------------------------
+Q1: What does your GitHub Actions workflow actually do?
+Ans: On every push and Pull Request to main or develop, GitHub Actions 
+     provisions an Ubuntu runner with JDK 17, downloads dependencies from 
+     Maven cache, compiles the source code, and runs all JUnit 5 tests via 
+     ./mvnw clean test. If any test fails, the merge is blocked.
+
+Q2: Why do you use Mockito instead of testing with a real database?
+Ans: Unit tests should be fast and isolated. Mockito lets us simulate ('mock') 
+     repository responses like playerRepository.findByIdForUpdate() so we can 
+     verify business logic in milliseconds without needing an external MySQL 
+     database running.
+
+Q3: What edge cases did you test for the bidding system?
+Ans: In BidServiceTest, I wrote tests for:
+     1. A team trying to bid more money than their current purse balance.
+     2. A team placing two bids in a row on the same player.
+     3. A bid that is equal to or lower than the existing highest bid.
+     All three scenarios are asserted to throw clear RuntimeExceptions.
+
+Q4: How do users test protected APIs inside Swagger UI?
+Ans: In Swagger UI, there is an 'Authorize' button at the top. You first call 
+     /api/auth/login to get a JWT token, click 'Authorize', paste the token, 
+     and Swagger automatically injects Bearer <token> into all subsequent API calls.
+================================================================================

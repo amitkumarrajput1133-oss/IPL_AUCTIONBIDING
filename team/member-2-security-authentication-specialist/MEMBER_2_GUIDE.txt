@@ -1,0 +1,116 @@
+================================================================================
+MEMBER 2: SECURITY & AUTHENTICATION SPECIALIST
+Branch: feature/security-auth
+Folder: team/member-2-security-authentication-specialist
+================================================================================
+
+1. WHO YOU ARE & WHAT YOU DO (IN SIMPLE WORDS)
+--------------------------------------------------------------------------------
+You are the Security Guard & Keymaker of the project.
+Your job is to make sure nobody can use the system without logging in, passwords 
+are safely hashed with BCrypt, and only the right people can do certain actions 
+(e.g., only ADMIN can sell players, while TEAM_OWNERS can place live bids).
+
+
+2. WHAT YOU MUST NEVER TOUCH (STRICT BOUNDARIES)
+--------------------------------------------------------------------------------
+Other members have their own jobs. Do NOT write code for:
+- Member 1's job: Team or Player CRUD business logic or squad limits.
+- Member 3's job: MySQL schema scripts, database row locking, live bidding logic.
+- Member 4's job: Frontend UI, HTML, CSS, JavaScript, or React code.
+- Member 5's job: Unit tests, Mockito tests, Postman collections, Swagger config.
+
+
+3. TOOLS YOU USE
+--------------------------------------------------------------------------------
+- Spring Security 6: Security framework that locks and unlocks URLs.
+- BCrypt: Scrambles passwords into secure, one-way hashes.
+- JWT (JSON Web Token): Digital 24-hour passes given to users after login.
+- Postman: To test login, registration, and Bearer token headers.
+
+
+4. YOUR CODE FILES & WHAT THEY DO (IN PLAIN ENGLISH)
+--------------------------------------------------------------------------------
+- config/SecurityConfig.java: 
+  The master security rulebook. Disables CSRF (because we are stateless), sets 
+  public URLs (/api/auth/**), and locks private URLs behind roles.
+
+- config/TokenUtil.java: 
+  The digital token maker. Generates a 24-hour pass with username, role, and 
+  team ID sealed with a secret key. Also verifies token authenticity and expiry.
+
+- config/TokenAuthenticationFilter.java: 
+  Sits at the entrance of every HTTP request. Reads the "Authorization: Bearer <token>" 
+  header, verifies the token, and sets the user in Spring's SecurityContext.
+
+- controller/AuthController.java: 
+  Provides URLs for /api/auth/register and /api/auth/login. Returns a JWT token 
+  when user credentials match.
+
+- config/WebSocketSecurityInterceptor.java & WebSocketHandshakeInterceptor.java: 
+  Verifies the JWT token when users connect to live auction WebSockets.
+
+
+5. YOUR POM.XML DEPENDENCIES (EXPLAINED SIMPLY)
+--------------------------------------------------------------------------------
+1. spring-boot-starter-security: 
+   The security engine: manages password hashing, filters, and URL access rules.
+
+2. spring-boot-starter-webmvc: 
+   Lets you expose /api/auth/login and /api/auth/register REST endpoints.
+
+3. spring-boot-starter-security-test: 
+   Helper to write tests for security filters and simulate logged-in users.
+
+
+6. GIT COMMANDS YOU NEED TO RUN
+--------------------------------------------------------------------------------
+# Switch to your feature branch:
+git checkout develop
+git checkout -b feature/security-auth
+
+# Check what files you modified:
+git status
+
+# Add your changes:
+git add src/ pom.xml
+
+# Save your changes with a message:
+git commit -m "feat(security): implement Spring Security 6, JWT TokenUtil, and AuthController"
+
+# Push your branch to GitHub:
+git push origin feature/security-auth
+
+
+7. EXACT WORDS TO SAY TO YOUR MENTOR (PRESENTATION SCRIPT)
+--------------------------------------------------------------------------------
+"Hello Sir. As Member 2 and Security Specialist:
+1. I configured Spring Security 6 in SecurityConfig.java to use a completely stateless session policy with JWTs.
+2. I built TokenUtil.java which generates secure tokens with HMAC-SHA256 containing the username, role (ADMIN or TEAM_OWNER), and franchise ID, valid for 24 hours.
+3. I implemented TokenAuthenticationFilter.java which runs on every HTTP request, reads the Bearer token, and populates the SecurityContext.
+4. I secured our endpoints with Role-Based Access Control: only ADMIN can stage players or trigger auction sales, while TEAM_OWNER can enter and place bids. Passwords are encrypted using BCryptPasswordEncoder."
+
+
+8. TOP QUESTIONS THE MENTOR CAN ASK YOU & HOW TO ANSWER
+--------------------------------------------------------------------------------
+Q1: Why is CSRF disabled in your SecurityConfig?
+Ans: CSRF attacks target browser cookies in stateful sessions. Because our 
+     backend uses stateless JWT authentication sent via HTTP headers, cookies 
+     are not used, making CSRF disabling completely safe.
+
+Q2: What information is stored inside your JWT token?
+Ans: The token payload stores the username, role (ADMIN or TEAM_OWNER), 
+     teamId, and the expiration timestamp (24 hours). It is digitally signed 
+     so clients cannot alter it.
+
+Q3: How does the server verify passwords?
+Ans: We never store plain text passwords. We use BCryptPasswordEncoder.matches(
+     rawPassword, encodedPassword). BCrypt automatically handles salt generation 
+     to protect against dictionary attacks.
+
+Q4: How do you stop a regular Team Owner from calling Admin APIs?
+Ans: In SecurityConfig.java, we define:
+     .requestMatchers('/api/auction/active/**').hasRole('ADMIN').
+     If a user with ROLE_TEAM_OWNER calls it, Spring Security blocks it with 
+     an HTTP 403 Forbidden.
+================================================================================

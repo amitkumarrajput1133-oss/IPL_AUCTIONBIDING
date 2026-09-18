@@ -515,6 +515,11 @@ function App() {
               <div className="panel-footer">SYSTEM SECURITY: UNFORCED</div>
             </div>
           </div>
+
+          {/* Global Franchise Purse Containment Leaderboard */}
+          <div className="mission-leaderboard-dock">
+            <Leaderboard teams={teams} activeTeamId={user.teamId} />
+          </div>
         </div>
       ) : (
         <div className="empty-pool-message">

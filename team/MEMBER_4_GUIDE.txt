@@ -1,0 +1,128 @@
+================================================================================
+MEMBER 4: FRONTEND & API INTEGRATION LEAD
+Branch: feature/frontend-ui
+Folder: team/member-4-frontend-api-integration-lead
+================================================================================
+
+1. WHO YOU ARE & WHAT YOU DO (IN SIMPLE WORDS)
+--------------------------------------------------------------------------------
+You are the Designer & Stage Creator of the application.
+Your job is to build the visual website that users see and interact with. 
+You create the dark cyber stadium theme, login screen, live bidding console 
+(+Rs 20L, +Rs 50L, +Rs 1 Cr buttons), and the live leaderboard showing all 
+10 teams' remaining budgets and squad numbers.
+
+
+2. WHAT YOU MUST NEVER TOUCH (STRICT BOUNDARIES)
+--------------------------------------------------------------------------------
+Other members have their own jobs. Do NOT write code for:
+- Member 1's job: Spring Boot backend APIs, player management controllers.
+- Member 2's job: Java Spring Security filters or backend JWT token makers.
+- Member 3's job: MySQL schema DDL scripts, JPA entity classes, database row locks.
+- Member 5's job: Java JUnit tests, Mockito mocks, Swagger Java configs.
+
+
+3. TOOLS YOU USE
+--------------------------------------------------------------------------------
+- Node.js (v18+ / v20+): JavaScript runtime environment.
+- Vite 8: Fast build tool running on http://localhost:5173.
+- React 19: Component-based UI library.
+- Axios: Sends API requests and injects Bearer tokens.
+- Vanilla Modern CSS: Custom glassmorphism styling without heavy CSS frameworks.
+
+* Note: You do NOT use Maven or pom.xml. You use Node.js and package.json.
+
+
+4. YOUR CODE FILES & WHAT THEY DO (IN PLAIN ENGLISH)
+--------------------------------------------------------------------------------
+- frontend/src/App.jsx: 
+  The main dashboard. Holds state for the active player, current bid price, 
+  user login state, and polls live updates.
+
+- frontend/src/index.css: 
+  The styling engine. Defines the dark cybernetic cricket stadium look, neon 
+  glows, glass card borders, and animations.
+
+- frontend/src/components/Login.jsx: 
+  The login screen. Allows 1-click toggling between Admin and Team Owner with 
+  pre-filled test credentials. Saves JWT token in localStorage.
+
+- frontend/src/components/BiddingConsole.jsx: 
+  The interactive bidding pad with quick increment buttons (+Rs 20 Lakh, 
+  +Rs 50 Lakh, +Rs 1 Crore) and purse health badges.
+
+- frontend/src/components/OrbitArena.jsx: 
+  Arranges all 10 IPL team logos in a glowing circle around the current player 
+  being auctioned.
+
+- frontend/src/components/PlayerCard.jsx: 
+  Displays the player's photo, country flag, role (Batsman, Bowler, etc.), 
+  base price, and current winning bid.
+
+- frontend/src/components/Leaderboard.jsx: 
+  Live budget tracker table showing each team's remaining purse and how many 
+  players they have bought.
+
+
+5. YOUR PACKAGE.JSON DEPENDENCIES (EXPLAINED SIMPLY)
+--------------------------------------------------------------------------------
+1. react & react-dom: 
+   Core library to build reactive UI components and render them in the browser.
+
+2. axios: 
+   Sends GET/POST API calls with the JWT Bearer token attached to headers.
+
+3. sockjs-client & stompjs: 
+   WebSocket client libraries to connect to live auction channels (/ws-auction).
+
+4. vite & @vitejs/plugin-react: 
+   Dev server and fast JSX bundler.
+
+
+6. GIT COMMANDS YOU NEED TO RUN
+--------------------------------------------------------------------------------
+# Switch to your feature branch:
+git checkout develop
+git checkout -b feature/frontend-ui
+
+# Check what files you modified:
+git status
+
+# Add your changes:
+git add frontend/
+
+# Save your changes with a message:
+git commit -m "feat(ui): React SPA with cybernetic dark theme, BiddingConsole, and OrbitArena"
+
+# Push your branch to GitHub:
+git push origin feature/frontend-ui
+
+
+7. EXACT WORDS TO SAY TO YOUR MENTOR (PRESENTATION SCRIPT)
+--------------------------------------------------------------------------------
+"Hello Sir. As Member 4 and Frontend & API Integration Lead:
+1. I built our Single Page Application using React 19 and Vite 8 under frontend/.
+2. I created a custom Cybernetic Dark Stadium Design System in index.css using CSS glassmorphism, responsive grid layouts, and neon stadium lighting.
+3. I developed the interactive Orbit Arena which places all 10 franchises in a circular visual ring around the active player card, highlighting the active bidder in real time.
+4. I built the Bidding Console with rapid increment buttons (+Rs 20L, +Rs 50L, +Rs 1 Cr) and integrated Axios to send JWT Bearer tokens to Member 2's secure endpoints."
+
+
+8. TOP QUESTIONS THE MENTOR CAN ASK YOU & HOW TO ANSWER
+--------------------------------------------------------------------------------
+Q1: Where do you store the JWT token in the frontend?
+Ans: When the user logs in via Login.jsx, the server returns a token which 
+     we store in localStorage.setItem('token', jwt). For subsequent requests, 
+     Axios attaches headers: { Authorization: 'Bearer ' + token }.
+
+Q2: How does the UI update when someone places a bid?
+Ans: When a user clicks a bid button in BiddingConsole.jsx, Axios posts to 
+     /api/v1/bids/place. When the backend responds with the new bid, App.jsx 
+     updates the currentPlayer state, highlights the leading franchise in 
+     OrbitArena, and deducts the amount from the Leaderboard.
+
+Q3: Why didn't you use Bootstrap or TailwindCSS?
+Ans: We used Vanilla CSS with CSS custom variables to maintain 100% fine-grained 
+     control over our cybernetic cricket stadium aesthetic, custom glowing 
+     animations, and radial circular positioning without bloated third-party 
+     CSS overhead.
+================================================================================

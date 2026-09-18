@@ -1,0 +1,117 @@
+================================================================================
+MEMBER 1: PROJECT LEAD & CORE BACKEND DEVELOPER
+Branch: feature/core-backend (Collaborating on main & develop)
+Folder: team/member-1-project-lead-core-backend
+================================================================================
+
+1. WHO YOU ARE & WHAT YOU DO (IN SIMPLE WORDS)
+--------------------------------------------------------------------------------
+You are the Captain and Foundation Builder of the backend.
+Your job is to build the main skeleton of the Spring Boot application, handle 
+Team and Player data, and enforce official IPL rules (like maximum 25 squad 
+size, max 8 overseas players, and deducting team purse upon purchase).
+
+
+2. WHAT YOU MUST NEVER TOUCH (STRICT BOUNDARIES)
+--------------------------------------------------------------------------------
+Other members have their own jobs. Do NOT write code for:
+- Member 2's job: Spring Security, JWT tokens, Login or Registration APIs.
+- Member 3's job: MySQL schema scripts, database row locking, live bidding logic.
+- Member 4's job: Frontend UI, HTML, CSS, JavaScript, or React code.
+- Member 5's job: Unit tests, Mockito tests, Postman collections, Swagger config.
+
+
+3. TOOLS YOU USE
+--------------------------------------------------------------------------------
+- Java 17 (JDK 17): Core programming language.
+- Spring Boot 3.x / 4.x: Backend framework running on port 8082.
+- Maven: Build tool to compile code and manage libraries.
+- Postman: To test your REST APIs.
+- VS Code / IntelliJ: Code editor.
+
+
+4. YOUR CODE FILES & WHAT THEY DO (IN PLAIN ENGLISH)
+--------------------------------------------------------------------------------
+- IplAuctionApplication.java: 
+  The starting point of the Spring Boot app. Contains the main() method.
+
+- controller/TeamController.java: 
+  Provides URLs (/api/v1/teams) to Create, Read, Update, and Delete teams.
+
+- service/TeamService.java: 
+  Business logic for teams. Checks starting budget of Rs 100 Crore.
+
+- controller/PlayerController.java: 
+  Provides URLs (/api/v1/players) to list players, add players, or sell them.
+
+- service/PlayerService.java: 
+  Checks IPL squad rules: max 25 total players, max 8 overseas players, 
+  and deducts the winning bid from the team purse when a player is sold.
+
+- controller/GlobalExceptionHandler.java: 
+  Catches errors (like invalid input or empty purse) and returns clean JSON 
+  error messages instead of crashing the server with a 500 error.
+
+- dto/SellPlayerRequest.java: 
+  Small data container transferring playerId, teamId, and soldAmount.
+
+
+5. YOUR POM.XML DEPENDENCIES (EXPLAINED SIMPLY)
+--------------------------------------------------------------------------------
+1. spring-boot-starter-webmvc: 
+   Lets you create REST API endpoints and controllers.
+
+2. spring-boot-starter-validation: 
+   Checks incoming requests so team names and budgets cannot be null or negative.
+
+3. spring-boot-starter-data-jpa: 
+   Talks to the database to find, save, and update Teams and Players.
+
+4. lombok: 
+   Saves you from manually typing getters, setters, and constructors.
+
+
+6. GIT COMMANDS YOU NEED TO RUN
+--------------------------------------------------------------------------------
+# Switch to your feature branch:
+git checkout develop
+git checkout -b feature/core-backend
+
+# Check what files you modified:
+git status
+
+# Add your changes:
+git add src/ pom.xml
+
+# Save your changes with a message:
+git commit -m "feat(core): setup Spring Boot base, Team/Player CRUD, and purse deduction"
+
+# Push your branch to GitHub:
+git push origin feature/core-backend
+
+
+7. EXACT WORDS TO SAY TO YOUR MENTOR (PRESENTATION SCRIPT)
+--------------------------------------------------------------------------------
+"Hello Sir. As Member 1 and Project Lead:
+1. I initialized the Spring Boot project skeleton, folder structure, and Maven dependencies.
+2. I built the complete REST APIs for Team Management and Player Management under /api/v1/teams and /api/v1/players.
+3. I implemented the core IPL squad validation logic in PlayerService: ensuring no team exceeds 25 total players and no team signs more than 8 overseas players.
+4. I built the GlobalExceptionHandler with @ControllerAdvice so any bad request returns a clean error payload instead of a 500 server crash."
+
+
+8. TOP QUESTIONS THE MENTOR CAN ASK YOU & HOW TO ANSWER
+--------------------------------------------------------------------------------
+Q1: How do you enforce the 25-player and 8-overseas limits?
+Ans: In PlayerService, before saving a player as SOLD, I use JPA repository 
+     methods countByTeamId(teamId) and countByTeamIdAndOverseasTrue(teamId). 
+     If either limit is breached, an exception is thrown.
+
+Q2: Why do you need GlobalExceptionHandler?
+Ans: Without it, Spring Boot returns ugly 500 error stack traces. With 
+     @ControllerAdvice, we catch exceptions and return neat JSON containing 
+     timestamp, HTTP status, and user-friendly error messages.
+
+Q3: What happens to the team budget when a player is sold?
+Ans: When sellPlayer() is called, we fetch the team, subtract the sold price 
+     from team.getBudget(), and save the updated balance back to the database.
+================================================================================

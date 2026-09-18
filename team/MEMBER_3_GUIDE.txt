@@ -1,0 +1,128 @@
+================================================================================
+MEMBER 3: DATABASE & BIDDING ENGINE DEVELOPER
+Branch: feature/database-bidding
+Folder: team/member-3-database-bidding-engine-developer
+================================================================================
+
+1. WHO YOU ARE & WHAT YOU DO (IN SIMPLE WORDS)
+--------------------------------------------------------------------------------
+You are the Engine Mechanic & Vault Keeper of the auction.
+Your job is to build the database tables, write the live bidding algorithm, and 
+solve the hardest engineering problem in the project: Concurrency & Race Conditions. 
+You ensure that when 10 teams click "Bid" at the exact same millisecond, the 
+database processes them one by one without corrupting the money.
+
+
+2. WHAT YOU MUST NEVER TOUCH (STRICT BOUNDARIES)
+--------------------------------------------------------------------------------
+Other members have their own jobs. Do NOT write code for:
+- Member 1's job: Team or Player CRUD business logic or squad limits.
+- Member 2's job: Spring Security filter chain or JWT token generation.
+- Member 4's job: Frontend UI, HTML, CSS, JavaScript, or React code.
+- Member 5's job: Unit tests, Mockito tests, Postman collections, Swagger config.
+
+
+3. TOOLS YOU USE
+--------------------------------------------------------------------------------
+- MySQL 8.0: The main relational database.
+- Docker & Docker Compose: Runs a ready-to-use MySQL container (docker-compose up -d).
+- H2 In-Memory Database: For instant local testing without setting up MySQL.
+- Spring Data JPA & Hibernate: Converts Java objects into database rows.
+
+
+4. YOUR CODE FILES & WHAT THEY DO (IN PLAIN ENGLISH)
+--------------------------------------------------------------------------------
+- model/ (User, Team, Player, Bid, Auction): 
+  The database blueprints. Defines table columns, foreign keys (@ManyToOne, 
+  @OneToMany), and uses BigDecimal for financial figures.
+
+- repository/PlayerRepository.java: 
+  Contains @Lock(LockModeType.PESSIMISTIC_WRITE). Tells the database: 
+  "Lock this player row so nobody else can change their price until this bid commits."
+
+- service/BidService.java: 
+  The bidding engine brain. Checks 4 rules: 
+  1) Does team have enough budget? 
+  2) Is new bid higher than current bid? 
+  3) Is this team trying to outbid itself? 
+  4) Is it above the base price?
+
+- controller/BidController.java: 
+  Provides URLs (POST /api/v1/bids/place, GET /api/v1/bids/live/{playerId}) 
+  to place and fetch bids.
+
+- config/DataInitializer.java: 
+  Auto-seeds the database on startup with all 10 official IPL franchises 
+  (Rs 100 Cr each), 11 users, and 23 marquee players.
+
+- docker-compose.yml: 
+  Runs MySQL 8.0 on port 3306 with database name ipl_auction_db.
+
+
+5. YOUR POM.XML DEPENDENCIES (EXPLAINED SIMPLY)
+--------------------------------------------------------------------------------
+1. spring-boot-starter-data-jpa: 
+   Hibernate & JPA: manages database tables and Pessimistic Row Locking.
+
+2. mysql-connector-j: 
+   The official MySQL driver to connect Java to the MySQL database.
+
+3. h2: 
+   In-memory database so the project can also run locally without installing MySQL.
+
+4. spring-boot-starter-websocket: 
+   WebSocket starter to broadcast live bid prices to all connected screens.
+
+
+6. GIT COMMANDS YOU NEED TO RUN
+--------------------------------------------------------------------------------
+# Switch to your feature branch:
+git checkout develop
+git checkout -b feature/database-bidding
+
+# Check what files you modified:
+git status
+
+# Add your changes:
+git add src/ pom.xml docker-compose.yml
+
+# Save your changes with a message:
+git commit -m "feat(database): JPA entities, pessimistic row locking, and live bidding engine"
+
+# Push your branch to GitHub:
+git push origin feature/database-bidding
+
+
+7. EXACT WORDS TO SAY TO YOUR MENTOR (PRESENTATION SCRIPT)
+--------------------------------------------------------------------------------
+"Hello Sir. As Member 3 and Database & Bidding Engine Developer:
+1. I designed our relational database schema and JPA domain models: User, Team, Player, Bid, and Auction.
+2. I solved the critical concurrency problem using Pessimistic Write Locking (@Lock(LockModeType.PESSIMISTIC_WRITE)) in PlayerRepository. This generates a native SELECT ... FOR UPDATE query in SQL, locking the player row so two bids placed at the exact same millisecond are processed sequentially without dirty reads.
+3. I implemented BidService.java with 4 strict validation rules: budget checks, minimum increment checks, anti-self outbidding, and base price floors.
+4. I also built DataInitializer.java to auto-seed all 10 IPL franchises with Rs 100 Crore purse each and 23 marquee players."
+
+
+8. TOP QUESTIONS THE MENTOR CAN ASK YOU & HOW TO ANSWER
+--------------------------------------------------------------------------------
+Q1: Why did you choose Pessimistic Locking over Optimistic Locking?
+Ans: In an auction where 10 teams bid at the exact same second, Optimistic 
+     Locking (using version numbers) would cause constant rollbacks and failed 
+     clicks for users. Pessimistic Locking (SELECT ... FOR UPDATE) locks the row 
+     briefly at the database level, evaluates the bid, commits, and releases 
+     smoothly without throwing rollback exceptions to the user.
+
+Q2: Why did you use BigDecimal instead of double or float for money?
+Ans: In Java, double and float suffer from binary rounding errors (e.g., 
+     100.0 - 0.2 = 99.80000000000001). In an auction with Rs 100 Crore budgets, 
+     BigDecimal provides 100% exact mathematical accuracy.
+
+Q3: What prevents a team from outbidding itself?
+Ans: In BidService.java, we check the highest bid in the database. If 
+     highestBid.getTeam().getId().equals(teamId), the system rejects the bid 
+     with: 'You already hold the highest bid!'.
+
+Q4: How do you prevent a team from bidding if they don't have enough purse?
+Ans: Before saving any bid, we compare team.getBudget().compareTo(amount). 
+     If the remaining purse is smaller than the bid amount, an exception is 
+     thrown and the transaction rolls back.
+================================================================================

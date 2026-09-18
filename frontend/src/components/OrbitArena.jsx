@@ -17,15 +17,15 @@ const getTeamAlias = (teamName) => {
 
 const teamPositions = {
   'PBKS': { x: 0, y: -160 },
-  'SRH': { x: -140, y: -100 },
-  'RCB': { x: -70, y: -50 },
-  'LSG': { x: -220, y: 80 },
-  'RR': { x: -130, y: 80 },
-  'MI': { x: -60, y: 70 },
-  'GT': { x: 130, y: -100 },
-  'CSK': { x: 110, y: 0 },
-  'KKR': { x: 130, y: 80 },
-  'DC': { x: 230, y: 80 },
+  'SRH': { x: -150, y: -100 },
+  'RCB': { x: -80, y: -60 },
+  'LSG': { x: -230, y: 60 },
+  'RR': { x: -170, y: 160 },
+  'MI': { x: -60, y: 180 },
+  'GT': { x: 150, y: -100 },
+  'CSK': { x: 180, y: -10 },
+  'KKR': { x: 170, y: 150 },
+  'DC': { x: 230, y: 60 },
 };
 
 function OrbitArena({ player, teams, activeHighestBid, onTeamClick }) {
