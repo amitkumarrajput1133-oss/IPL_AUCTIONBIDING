@@ -17,3 +17,6 @@
 # OS files
 .DS_Store
 Thumbs.db
+# Team distribution zip archives
+member_packages/
+*.zip
