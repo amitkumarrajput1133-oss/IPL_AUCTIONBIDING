@@ -42,7 +42,14 @@ public class PlayerController {
 
     @PostMapping
     public ResponseEntity<Player> createPlayer(@Valid @RequestBody Player player) {
+        if (player.getOriginalBasePrice() == null) {
+            player.setOriginalBasePrice(player.getBasePrice());
+        }
+        if (player.getStatus() == null) {
+            player.setStatus(Player.PlayerStatus.UNSOLD);
+        }
         Player created = playerService.createPlayer(player);
+        messagingTemplate.convertAndSend("/topic/player-added", created);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 

@@ -28,4 +28,9 @@ public class AuthController {
     public ResponseEntity<User> register(@Valid @RequestBody User user) {
         return ResponseEntity.ok(userService.register(user));
     }
+
+    @PostMapping("/register-team")
+    public ResponseEntity<LoginResponse> registerTeam(@Valid @RequestBody com.ipl.auction.dto.RegisterTeamRequest request) {
+        return ResponseEntity.ok(userService.registerTeam(request));
+    }
 }
