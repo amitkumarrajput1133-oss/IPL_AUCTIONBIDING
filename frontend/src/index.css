@@ -577,6 +577,8 @@ body {
   background: rgba(10, 10, 14, 0.72);
   border: 1px solid var(--team-border-tint, rgba(255, 255, 255, 0.08));
   box-shadow: inset 0 0 35px var(--team-bg-tint, rgba(0, 0, 0, 0.5));
+}
+
 /* ==========================================================================
    ORBIT ARENA: TEAMS ROTATING DYNAMICALLY AROUND THE PLAYER NAME
    ========================================================================== */
@@ -1179,14 +1181,6 @@ body {
   color: #fbbf24;
   border: 1px solid rgba(251, 191, 36, 0.35);
   animation: pulseGlow 1.5s infinite;
-}
-  display: inline-block;
-  font-size: 0.7rem;
-  font-weight: 800;
-  padding: 0.15rem 0.6rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .telemetry-status-badge.live {
