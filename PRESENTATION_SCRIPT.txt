@@ -1,0 +1,220 @@
+================================================================================
+           IPL MEGA AUCTION SYSTEM - TEAM PRESENTATION SCRIPT
+================================================================================
+
+PROJECT SUMMARY (Quick Facts):
+- Project Name: Real-Time IPL Auction System
+- Team Size: 5 Members
+- Tech Stack: Java 17, Spring Boot 3, React (Vite), WebSockets (STOMP), MySQL / H2, JWT
+
+================================================================================
+MEMBER 1: PROJECT LEADER & CORE BACKEND ARCHITECT
+================================================================================
+
+[SPEAKER 1 OPENS THE PRESENTATION]
+
+"Good morning / afternoon everyone!
+My name is [Leader Name]. I am the Project Leader and Core Backend Architect 
+for our project: The Real-Time IPL Auction System.
+
+Before we dive into the technical details, let me give you a quick gist of 
+what this project is, why we chose it, and what problem it solves."
+
+
+1. WHAT IS THIS PROJECT & WHY WE CHOSE IT?
+------------------------------------------
+"The IPL Mega Auction is a high-stakes, multi-million-dollar event where fast 
+decisions, strict budget limits, and instant updates make or break a team.
+We chose to build this system because it represents a complete real-world 
+engineering challenge: combining live financial transactions, concurrent 
+bidding by multiple franchises, and sub-second real-time synchronization."
+
+
+2. WHAT PROBLEM DOES IT SOLVE?
+------------------------------
+"In any live auction system, three major technical problems occur:
+
+  1. Race Conditions: When two teams click 'Bid' at the exact same millisecond, 
+     ordinary systems cause double bids or inconsistent prices.
+  2. Financial & Squad Limits: Teams must strictly stay within their Rs. 120 Crore 
+     purse and follow team squad balance rules.
+  3. Network Lag: Normal web apps use slow refresh/polling. In live bidding, 
+     every team must see the updated hammer price in under 50 milliseconds.
+
+Our project solves all of these using database concurrency locking, 
+Spring Security JWT tokens, and STOMP WebSockets."
+
+
+3. MY ROLE, WHAT I USED & WHY:
+------------------------------
+- My Role: System Orchestration, REST Architecture, and Core Backend APIs.
+- Tech Used: Java 17, Spring Boot 3, Spring MVC.
+- Why I Used It:
+    * Spring Boot gives enterprise-level dependency injection and robust 
+      transaction management (@Transactional).
+    * Handles all CRUD operations for Teams, Players, and Auction rounds.
+    * Implemented Global Exception Handling (@RestControllerAdvice) to return 
+      clean, structured JSON error messages for invalid bids or budget limits.
+
+[PASSING THE MIC]:
+"Now, I would like to hand over the mic to [Member 2 Name], who will explain 
+how we secured the system and authenticated franchise users."
+
+
+================================================================================
+MEMBER 2: SECURITY & AUTHENTICATION SPECIALIST
+================================================================================
+
+[MEMBER 2 SPEAKS]
+
+"Thank you, [Leader Name]!
+Hello everyone, I am [Member 2 Name], and my role was Security & Authentication Specialist."
+
+
+1. MY ROLE, WHAT I USED & WHY:
+------------------------------
+"In a multi-team bidding system, unauthorized bids or team impersonation 
+(like bidding on behalf of CSK while logged in as MI) cannot be allowed. 
+My job was to ensure rock-solid authentication and Role-Based Access Control."
+
+- Tech Used: 
+    * Spring Security 6
+    * Stateless JWT (JSON Web Tokens) with HMAC-SHA256
+    * BCrypt Password Hashing
+
+- Why I Used It:
+    * Traditional server sessions consume memory and do not work well with 
+      distributed WebSocket connections.
+    * JWTs are stateless, tamper-proof, and fast. The token directly carries the 
+      team owner's identity and authorized franchise ID.
+
+- What I Built:
+    * SecurityConfig.java: Defined strict CORS rules and protected endpoints.
+    * TokenAuthenticationFilter.java & TokenUtil.java: Intercepts every HTTP 
+      request, verifies the JWT signature, and authenticates the user.
+    * WebSocketSecurityInterceptor.java: Validates user identity on live socket 
+      connection frames so unauthorized clients cannot inject fake bids.
+
+[PASSING THE MIC]:
+"Now, I will pass the mic to [Member 3 Name], who designed our database schema 
+and solved the concurrency problem."
+
+
+================================================================================
+MEMBER 3: DATABASE SCHEMA & CONCURRENCY DEVELOPER
+================================================================================
+
+[MEMBER 3 SPEAKS]
+
+"Thank you, [Member 2 Name]!
+Hello everyone, I am [Member 3 Name], and I served as the Database Architect & 
+Concurrency Developer."
+
+
+1. MY ROLE, WHAT I USED & WHY:
+------------------------------
+"The biggest technical bottleneck in any live auction is handling concurrent 
+bids at the exact same moment without data corruption or double spending."
+
+- Tech Used: 
+    * MySQL / In-Memory H2 Database
+    * Spring Data JPA & Hibernate ORM
+    * Pessimistic Database Row Locking (@Lock(LockModeType.PESSIMISTIC_WRITE))
+
+- Why I Used It:
+    * Optimistic locking causes annoying retry errors for users during heavy bidding.
+    * Pessimistic Locking locks the specific Player and Team rows at the SQL level 
+      (SELECT ... FOR UPDATE). This forces incoming bids to be processed one-by-one 
+      in exact chronological sequence, completely eliminating race conditions.
+
+- What I Built:
+    * Relational Entities: Designed Player, Team, User, Bid, and Auction models.
+    * Atomic Purse Deductions: Deducts team purse and updates rosters safely.
+    * DataInitializer.java: Pre-seeds the database with 10 official IPL franchises, 
+      starting purse amounts, and marquee players with their base prices.
+
+[PASSING THE MIC]:
+"Now, I will pass the mic to [Member 4 Name] to showcase our frontend user interface."
+
+
+================================================================================
+MEMBER 4: FRONTEND UI & DESIGN LEAD
+================================================================================
+
+[MEMBER 4 SPEAKS]
+
+"Thank you, [Member 3 Name]!
+Hello everyone, I am [Member 4 Name], and I led the Frontend UI & Component Design."
+
+
+1. MY ROLE, WHAT I USED & WHY:
+------------------------------
+"In a live auction, the interface must be clean, responsive, and easy to read. 
+A team owner cannot waste time looking for buttons when the timer is ticking."
+
+- Tech Used: 
+    * React with Vite
+    * Custom CSS Design System with HSL Color Tokens
+    * Lucide Icons & Modern Typography (Outfit / Space Grotesk)
+
+- Why I Used It:
+    * Vite offers lightning-fast development and optimized build performance.
+    * Custom CSS gave us total control over our 'Cybernetic Dark Stadium' theme, 
+      glowing neon accents, and franchise team colors (CSK Gold, MI Blue, RCB Red) 
+      without adding the overhead of heavy external UI libraries.
+
+- What I Built:
+    * PlayerCard.jsx: Displays the active player, role badge, base price, and live bid.
+    * BiddingConsole.jsx: Quick-action bid buttons (+20L, +50L, +1Cr) with automatic 
+      disable logic when purse balance is insufficient.
+    * Leaderboard.jsx & OrbitArena.jsx: Live purse utilization bars, squad counters 
+      (Indian vs. Overseas), and visual player analytics charts.
+
+[PASSING THE MIC]:
+"Now, I will pass the mic to [Member 5 Name] for WebSockets, automated testing, and docs."
+
+
+================================================================================
+MEMBER 5: WEBSOCKET INTEGRATION & QA / TESTING LEAD
+================================================================================
+
+[MEMBER 5 SPEAKS]
+
+"Thank you, [Member 4 Name]!
+Hello everyone, I am [Member 5 Name], and my focus was Real-Time WebSockets, 
+QA Testing, and API Documentation."
+
+
+1. MY ROLE, WHAT I USED & WHY:
+------------------------------
+"An auction platform cannot rely on manual page refreshes. When any team places a bid 
+or a player is sold, all connected screens must update instantly."
+
+- Tech Used: 
+    * SockJS & STOMP Protocol for WebSockets
+    * OpenAPI 3 / Swagger UI
+    * Postman Test Collections
+    * JUnit 5 & Mockito
+
+- Why I Used It:
+    * STOMP WebSockets provide full-duplex, low-latency communication. When a bid 
+      is accepted, backend publishes to '/topic/bids', updating all screens instantly.
+    * Swagger UI and Postman provide a complete, interactive API contract.
+    * JUnit 5 & Mockito ensure that critical edge-cases are fully verified.
+
+- What I Built:
+    * Real-Time Subscriptions: Connected React hooks to live topics to synchronize 
+      bids, sales, and leaderboard updates across all clients.
+    * Interactive API Docs: Configured Swagger UI at /swagger-ui/index.html.
+    * Automated Test Suites: Wrote backend unit tests covering edge cases such as:
+        - Bidding with insufficient balance
+        - Consecutive bids by the same franchise
+        - Out-of-order player sales
+
+[CLOSING THE PRESENTATION]:
+"This concludes our team presentation. We would now love to give you a live demonstration 
+of the IPL Auction System in action. Thank you, and we welcome any questions!"
+
+================================================================================
+                             END OF SCRIPT
+================================================================================
