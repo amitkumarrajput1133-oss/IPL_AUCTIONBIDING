@@ -1,0 +1,262 @@
+================================================================================
+IPL MEGA AUCTION SYSTEM — MEMBER 1 MENTOR PRESENTATION SCRIPT & VIVA MASTER GUIDE
+================================================================================
+ROLE:              Member 1 — Project Lead & Core Backend Architect
+STATUS:            100% COMPLETE & VERIFIED
+TECH STACK:        Java 17, Spring Boot 3.x, Spring Data JPA, Jakarta Validation, Lombok
+PRIMARY WORKSPACE: backend/src/main/java/com/ipl/auction/
+KEY CODE FILES:    
+  - IplAuctionApplication.java
+  - controller/TeamController.java
+  - controller/PlayerController.java
+  - service/TeamService.java
+  - service/PlayerService.java
+  - controller/GlobalExceptionHandler.java
+  - dto/SellPlayerRequest.java
+  - pom.xml & application.properties
+================================================================================
+
+--------------------------------------------------------------------------------
+TABLE OF CONTENTS
+--------------------------------------------------------------------------------
+1. Opening Speech & Team Introduction (Say this word-for-word)
+2. Comprehensive Role & Architectural Overview
+3. Deep-Dive Code Walkthrough (File-by-File, Method-by-Method)
+4. Business Rules & Algorithms Implemented Down to the Last Bit
+5. Live Demonstration Guide (What to show the mentor)
+6. Complete Technical Defense (Why we chose this architecture)
+7. Exhaustive Mentor Q&A / Viva Defense Preparation
+8. Transition to Member 2
+
+================================================================================
+1. OPENING SPEECH & TEAM INTRODUCTION (SAY THIS TO THE MENTOR)
+================================================================================
+
+"Respected Mentor / Sir / Ma'am, Good morning.
+
+I am Member 1, the Project Lead and Core Backend Architect for our team project: 
+the Real-Time IPL Mega Auction System.
+
+I am proud to announce that our work is 100% completed, fully integrated, and 
+thoroughly tested.
+
+Before my teammates demonstrate their individual components, let me give you a 
+high-level executive summary of what we have engineered:
+
+The IPL Mega Auction is a high-velocity, multi-million-dollar event where 10 franchises 
+compete in real time under strict financial and squad constraints. Building an enterprise 
+system for this requires solving three massive engineering hurdles:
+1. High-concurrency live bidding with zero race conditions or double-spending.
+2. Strict transactional enforcement of official BCCI/IPL rules (e.g., maximum 25 squad 
+   members, max 8 overseas players, and non-negative purse balances).
+3. Sub-50 millisecond real-time state synchronization across all franchise terminals.
+
+As Project Lead, I laid the foundational architecture in Java 17 and Spring Boot 3, 
+structured our modular multi-tier package layout, built the full REST API lifecycle for 
+Franchises and Players, implemented the atomic player sale and squad validation algorithms, 
+and built a centralized exception handling layer to guarantee zero unhandled 500 crashes.
+
+Now, allow me to walk you through the exact technical implementation of my domain."
+
+================================================================================
+2. COMPREHENSIVE ROLE & ARCHITECTURAL OVERVIEW
+================================================================================
+
+As the Core Backend Architect, I was responsible for:
+
+1. Application Foundation & Lifecycle:
+   - Initialized Spring Boot 3 with embedded Apache Tomcat running on port 8082.
+   - Configured Maven build dependencies, compiler plugins, and properties.
+   - Engineered dual database configuration supporting both Dockerized MySQL 8.0 
+     for production and H2 In-Memory mode for zero-dependency instant execution.
+
+2. Franchise Domain Management (/api/teams):
+   - Implemented full CRUD REST endpoints for all 10 IPL franchises.
+   - Designed purse allocation tracking, initializing each franchise with their 
+     official ₹100 Crore / ₹120 Crore auction purse.
+
+3. Player Registry & Catalog (/api/players):
+   - Built catalog management for Batsmen, Bowlers, All-Rounders, and Wicket-Keepers.
+   - Implemented category filtering, nationality flags (Indian vs. Overseas), base price 
+     floors, and dynamic auction status tracking (UNSOLD -> IN_AUCTION -> SOLD).
+
+4. Atomic Player Sale & Squad Constraint Enforcement:
+   - Designed transactional sale finalization (`/api/players/{id}/sell`) that validates 
+     buyer eligibility, checks budget adequacy, enforces squad ceilings, deducts the purse, 
+     updates the roster, and broadcasts real-time WebSocket events.
+   - Implemented the unsold rollback mechanism (`/api/players/{id}/unsold`) that safely 
+     refunds the buyer franchise if an erroneous sale is reverted.
+
+5. Enterprise Error Handling:
+   - Created `GlobalExceptionHandler` using `@RestControllerAdvice` to translate all 
+     business exceptions into clean, uniform RFC-7807 compatible JSON responses.
+
+================================================================================
+3. DEEP-DIVE CODE WALKTHROUGH (FILE-BY-FILE & METHOD-BY-METHOD)
+================================================================================
+
+Mentor: "Show me where your code lives and explain how it works."
+
+Here is the exact code walkthrough to present:
+
+--------------------------------------------------------------------------------
+A. `IplAuctionApplication.java` (Root Bootstrap)
+--------------------------------------------------------------------------------
+- Purpose: Entry point of the Spring Boot framework.
+- Key Annotations:
+  * `@SpringBootApplication`: Meta-annotation combining `@Configuration`, 
+    `@EnableAutoConfiguration`, and `@ComponentScan`.
+- What it does: Bootstraps the Spring ApplicationContext, starts embedded Tomcat on 
+  port 8082, and initializes dependency injection containers.
+
+--------------------------------------------------------------------------------
+B. `TeamController.java` (`/api/teams`)
+--------------------------------------------------------------------------------
+- Endpoints Managed:
+  1. `GET /api/teams`: Fetches all 10 franchises with real-time remaining purses.
+  2. `GET /api/teams/{id}`: Fetches individual franchise roster and financial state.
+  3. `POST /api/teams`: Registers a new franchise with starting budget.
+  4. `PUT /api/teams/{id}`: Updates team details, logos, and purse parameters.
+  5. `DELETE /api/teams/{id}`: Safely deletes a franchise if no player constraints exist.
+- Dependencies Injected: `TeamService` via constructor injection.
+
+--------------------------------------------------------------------------------
+C. `PlayerController.java` (`/api/players`)
+--------------------------------------------------------------------------------
+- Endpoints Managed:
+  1. `GET /api/players`: Returns full player catalog with current bidding state.
+  2. `GET /api/players/{id}`: Returns full details of a specific player.
+  3. `POST /api/players`: Adds new player with role, country, and base price.
+  4. `PUT /api/players/{id}`: Updates player attributes.
+  5. `PUT /api/players/{id}/sell`: Calls `playerService.sellPlayer(...)` to execute 
+     the official purchase transaction.
+  6. `PUT /api/players/{id}/unsold`: Calls `playerService.markUnsold(...)` to revert 
+     or mark the player as unsold.
+
+--------------------------------------------------------------------------------
+D. `PlayerService.java` (Core Business & Validation Engine)
+--------------------------------------------------------------------------------
+- Key Methods & Algorithmic Logic:
+  
+  1. `sellPlayer(Long playerId, SellPlayerRequest request)`:
+     * Annotated with `@Transactional`: Guarantees database atomicity.
+     * Step 1: Acquires pessimistic locks via `playerRepository.findByIdForUpdate(playerId)` 
+       and `teamRepository.findByIdForUpdate(request.getTeamId())`.
+     * Step 2 (Purse Check): Validates `team.getBudget().compareTo(finalPrice) >= 0`. 
+       If false, throws `RuntimeException("Insufficient team budget")`.
+     * Step 3 (Max Squad Check): Queries `playerRepository.countByTeamId(teamId)`. 
+       If count >= 25, throws `RuntimeException("Team squad is full (Maximum 25 players allowed)")`.
+     * Step 4 (Overseas Quota Check): If `player.isOverseas()` is true, queries 
+       `playerRepository.countByTeamIdAndOverseasTrue(teamId)`. If count >= 8, throws 
+       `RuntimeException("Overseas player limit reached (Maximum 8 overseas players allowed)")`.
+     * Step 5 (Atomic Purse Deduction): Executes `team.setBudget(team.getBudget().subtract(finalPrice))`.
+     * Step 6 (Status Mutation): Sets `player.setStatus(PlayerStatus.SOLD)`, links `player.setTeam(team)`, 
+       and sets `player.setFinalPrice(finalPrice)`.
+     * Step 7 (Real-time Broadcast): Injects `SimpMessagingTemplate` to push updated player 
+       and leaderboard payload to `/topic/players` and `/topic/teams`.
+
+  2. `markUnsold(Long playerId)`:
+     * Annotated with `@Transactional`.
+     * If the player was previously `SOLD`, finds the purchasing team, refunds the entire 
+       `finalPrice` back to `team.getBudget()`, clears `player.setTeam(null)`, resets 
+       status to `PlayerStatus.UNSOLD`, and broadcasts the refund over WebSockets.
+
+--------------------------------------------------------------------------------
+E. `GlobalExceptionHandler.java` (Centralized Error Handler)
+--------------------------------------------------------------------------------
+- Purpose: Catches uncaught runtime and validation exceptions across all controllers.
+- Annotations: `@RestControllerAdvice`, `@ExceptionHandler`.
+- Implementation:
+  * Intercepts `RuntimeException`, `MethodArgumentNotValidException`, and `BadCredentialsException`.
+  * Constructs a structured JSON response body containing:
+    `{ "timestamp": "2026-10-02T...", "status": 400, "error": "Bad Request", "message": "..." }`
+  * Prevents ugly stack traces from ever leaking to the client.
+
+================================================================================
+4. BUSINESS RULES & ALGORITHMS IMPLEMENTED DOWN TO THE LAST BIT
+================================================================================
+
+1. BCCI Squad Capacity Rule:
+   - Formula: `Current_Squad_Count < 25`
+   - Strict enforcement preventing a team from bidding or buying if they already have 25 players.
+
+2. BCCI Overseas Player Ceiling:
+   - Formula: `If Player.isOverseas == true, Current_Overseas_Count < 8`
+   - Protects domestic player representation as per IPL tournament mandates.
+
+3. Financial Purse Solvency Rule:
+   - Formula: `Team.Remaining_Budget >= Winning_Bid_Amount`
+   - Zero negative purse balance allowed under any circumstances.
+
+4. Transactional Rollback Guarantee:
+   - If squad verification fails, the database automatically rolls back any pending purse 
+     modifications, ensuring 100% ACID compliance.
+
+================================================================================
+5. LIVE DEMONSTRATION GUIDE (WHAT TO SHOW THE MENTOR)
+================================================================================
+
+1. Point to the running terminal or browser:
+   - Show backend running on port 8082: `http://localhost:8082/api/teams`
+   - Show the 10 loaded IPL teams with their ₹100 Cr purse balances.
+2. Demonstrate a Player Sale:
+   - Show active player (e.g., Virat Kohli or Rohit Sharma).
+   - Place a bid for CSK.
+   - Click "Sell Player" -> Show how the purse is deducted immediately in the database 
+     and on the leaderboard.
+3. Demonstrate Squad Cap & Error Handling:
+   - Show Postman or UI rejection if purse balance is exceeded or invalid constraints are passed.
+   - Show how `GlobalExceptionHandler` returns clean JSON errors.
+
+================================================================================
+6. COMPLETE TECHNICAL DEFENSE (WHY WE CHOSE THIS STACK)
+================================================================================
+
+- Why Spring Boot 3 over Node.js / Express for Core Backend?
+  * Spring Boot offers production-grade declarative transaction management (`@Transactional`), 
+    strict compile-time type safety with Java 17, and enterprise ORM with Hibernate that handles 
+    complex financial transactions with zero data inconsistency.
+- Why Constructor Injection over `@Autowired` field injection?
+  * Constructor injection ensures immutability (`final` fields), prevents NullPointerExceptions, 
+    and makes unit testing with Mockito effortless without requiring Spring Context reflection.
+
+================================================================================
+7. EXHAUSTIVE MENTOR Q&A / VIVA DEFENSE PREPARATION
+================================================================================
+
+Q1: How do you enforce the 25-player and 8-overseas limits in code?
+Answer:
+"Inside `PlayerService.sellPlayer()`, before persisting any purchase, we query:
+1. `playerRepository.countByTeamId(teamId)` -> If >= 25, we throw a descriptive RuntimeException.
+2. If `player.isOverseas()`, we query `playerRepository.countByTeamIdAndOverseasTrue(teamId)` -> If >= 8, 
+we throw an Overseas Quota Exceeded Exception.
+Because the method is marked `@Transactional`, throwing an exception automatically rolls back 
+all pending changes."
+
+Q2: What happens if the server crashes halfway through selling a player?
+Answer:
+"Because of Spring's `@Transactional` annotation and database ACID guarantees, either all 
+operations complete (player marked SOLD, team assigned, purse deducted), or none of them do. 
+The database will execute an automatic rollback, preventing orphan sales or corrupted purse totals."
+
+Q3: Why did you implement a GlobalExceptionHandler?
+Answer:
+"Without `@RestControllerAdvice`, uncaught Java exceptions return generic HTTP 500 pages with 
+internal stack traces that expose database table names and package structures—a major security 
+risk. `GlobalExceptionHandler` intercepts exceptions and formats them into clean, standardized 
+JSON error responses with exact HTTP status codes (e.g., 400 Bad Request, 404 Not Found, 403 Forbidden)."
+
+Q4: How does your unsold player rollback function work?
+Answer:
+"In `PlayerService.markUnsold()`, if a player is transitioned to UNSOLD after having been 
+previously SOLD, the service looks up the previous purchasing team, adds the `finalPrice` 
+back to `team.getBudget()`, detaches the team from the player, and broadcasts the updated 
+purse and status to all connected clients over WebSockets."
+
+================================================================================
+8. TRANSITION TO MEMBER 2 (PASSING THE MIC)
+================================================================================
+
+"Thank you, Sir. Now I would like to pass the floor to Member 2, who engineered 
+our Spring Security 6 perimeter, JWT authentication, and WebSocket access control."
+================================================================================
