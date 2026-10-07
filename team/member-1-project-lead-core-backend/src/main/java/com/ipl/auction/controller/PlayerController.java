@@ -132,6 +132,11 @@ public class PlayerController {
 
         // Broadcast real-time player sale/unsold update to all connected devices
         messagingTemplate.convertAndSend("/topic/players", unsoldPlayer);
+        messagingTemplate.convertAndSend("/topic/bids/reset", (Object) Map.of(
+                "playerId", id,
+                "player", unsoldPlayer,
+                "message", "Player " + unsoldPlayer.getName() + " marked UNSOLD, value reset to base price ₹" + unsoldPlayer.getBasePrice()
+        ));
 
         return ResponseEntity.ok(unsoldPlayer);
     }

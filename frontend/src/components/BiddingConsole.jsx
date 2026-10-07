@@ -4,9 +4,11 @@ function BiddingConsole({
   user,
   player,
   teamTheme,
+  timerSeconds,
   onPlaceBid,
   onSellPlayer,
   onUnsoldPlayer,
+  onResetBid,
   onPrevPlayer,
   onNextPlayer,
   onOpenAddPlayer,
@@ -20,6 +22,7 @@ function BiddingConsole({
   const isSold = player.status === 'SOLD';
   const isAdmin = user.role === 'ADMIN';
   const isOwner = user.role === 'TEAM_OWNER';
+  const isTimerExpired = timerSeconds !== undefined && timerSeconds <= 0;
 
   const theme = teamTheme || {
     name: 'FRANCHISE',
@@ -32,6 +35,7 @@ function BiddingConsole({
 
   const handleCustomSubmit = (e) => {
     e.preventDefault();
+    if (isTimerExpired) return;
     const val = Number(customBidStr);
     if (!val || isNaN(val)) return;
     onPlaceBid(val, false); // false indicates absolute amount
@@ -67,13 +71,22 @@ function BiddingConsole({
               onClick={onSellPlayer}
               disabled={isSold}
               className={`action-button hammer-button font-mono ${isSold ? 'disabled' : ''}`}
+              title="Finalize sale to highest bidder"
             >
               🔨 HAMMER DOWN
+            </button>
+            <button
+              onClick={onResetBid}
+              className="action-button reset-button font-mono"
+              title="Reset player bids back to base price"
+            >
+              🔄 RESET BID
             </button>
             <button
               onClick={onUnsoldPlayer}
               disabled={player.status === 'UNSOLD'}
               className={`action-button unsold-button font-mono ${player.status === 'UNSOLD' ? 'disabled' : ''}`}
+              title="Mark player as unsold"
             >
               ♦ UNSOLD
             </button>
@@ -121,22 +134,33 @@ function BiddingConsole({
           
           {!isSold ? (
             <div className="bidding-actions">
+              {isTimerExpired && (
+                <div className="timer-expired-banner font-mono">
+                  ⏱️ TIME EXPIRED • BIDDING LOCKED
+                </div>
+              )}
               <div className="increment-row">
                 <button
                   onClick={() => onPlaceBid(2000000, true)} // true indicates incremental
-                  className="bid-increment-btn l20 font-mono"
+                  disabled={isTimerExpired}
+                  className={`bid-increment-btn l20 font-mono ${isTimerExpired ? 'disabled' : ''}`}
+                  title={isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹20 Lakhs"}
                 >
                   <span className="btn-plus">+</span>₹20L
                 </button>
                 <button
                   onClick={() => onPlaceBid(5000000, true)}
-                  className="bid-increment-btn l50 font-mono"
+                  disabled={isTimerExpired}
+                  className={`bid-increment-btn l50 font-mono ${isTimerExpired ? 'disabled' : ''}`}
+                  title={isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹50 Lakhs"}
                 >
                   <span className="btn-plus">+</span>₹50L
                 </button>
                 <button
                   onClick={() => onPlaceBid(10000000, true)}
-                  className="bid-increment-btn c1 font-mono"
+                  disabled={isTimerExpired}
+                  className={`bid-increment-btn c1 font-mono ${isTimerExpired ? 'disabled' : ''}`}
+                  title={isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹1 Crore"}
                 >
                   <span className="btn-plus">+</span>₹1Cr
                 </button>
@@ -145,12 +169,17 @@ function BiddingConsole({
               <form onSubmit={handleCustomSubmit} className="custom-bid-form">
                 <input
                   type="number"
-                  placeholder="Custom bid amount (₹)"
+                  placeholder={isTimerExpired ? "Bidding locked (Time expired)" : "Custom bid amount (₹)"}
                   value={customBidStr}
                   onChange={(e) => setCustomBidStr(e.target.value)}
-                  className="custom-bid-input font-mono"
+                  disabled={isTimerExpired}
+                  className={`custom-bid-input font-mono ${isTimerExpired ? 'disabled' : ''}`}
                 />
-                <button type="submit" className="custom-bid-submit font-mono">
+                <button 
+                  type="submit" 
+                  disabled={isTimerExpired}
+                  className={`custom-bid-submit font-mono ${isTimerExpired ? 'disabled' : ''}`}
+                >
                   BID NOW
                 </button>
               </form>
@@ -161,24 +190,9 @@ function BiddingConsole({
             </div>
           )}
 
-          <div className="stage-navigation">
-            <button
-              onClick={onPrevPlayer}
-              disabled={currentIndex === 0}
-              className="nav-button prev-button font-mono"
-            >
-              ◀ PREV
-            </button>
-            <span className="stage-indicator font-mono">
-              LOT {currentIndex + 1} / {totalPlayers}
-            </span>
-            <button
-              onClick={onNextPlayer}
-              disabled={currentIndex === totalPlayers - 1}
-              className="nav-button next-button font-mono"
-            >
-              NEXT ▶
-            </button>
+          <div className="stage-sync-badge font-mono">
+            <span className="live-pulse-dot"></span>
+            <span>LOT #{currentIndex + 1} • SYNCHRONIZED TO BCCI AUCTIONEER</span>
           </div>
         </div>
       )}

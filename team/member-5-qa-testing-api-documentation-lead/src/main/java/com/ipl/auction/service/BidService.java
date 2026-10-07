@@ -82,6 +82,33 @@ public class BidService {
         return bidRepository.save(bid);
     }
 
+    @Transactional
+    public Player resetBidsForPlayer(Long playerId) {
+        Player player = playerRepository.findByIdForUpdate(playerId)
+                .orElseThrow(() -> new RuntimeException("Player not found"));
+
+        // If player was previously sold and assigned to a team, refund the team's purse
+        if (player.getStatus() == Player.PlayerStatus.SOLD && player.getTeam() != null) {
+            Team team = teamRepository.findByIdForUpdate(player.getTeam().getId())
+                    .orElseThrow(() -> new RuntimeException("Team not found"));
+            BigDecimal refundAmount = player.getBasePrice() != null ? player.getBasePrice() : BigDecimal.ZERO;
+            BigDecimal currentBudget = team.getBudget() != null ? team.getBudget() : BigDecimal.ZERO;
+            team.setBudget(currentBudget.add(refundAmount));
+            teamRepository.save(team);
+        }
+
+        // Wipe all bid records for this player
+        bidRepository.deleteByPlayerId(playerId);
+
+        // Reset player state to UNSOLD, clear team allocation, and revert price to originalBasePrice
+        player.setTeam(null);
+        player.setStatus(Player.PlayerStatus.UNSOLD);
+        BigDecimal original = player.getOriginalBasePrice() != null ? player.getOriginalBasePrice() : player.getBasePrice();
+        player.setBasePrice(original);
+
+        return playerRepository.save(player);
+    }
+
     public java.util.Optional<Bid> getHighestBidForPlayer(Long playerId) {
         List<Bid> bids = bidRepository.findByPlayerIdOrderByAmountDesc(playerId);
         return bids.isEmpty() ? java.util.Optional.empty() : java.util.Optional.of(bids.get(0));

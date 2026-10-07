@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.ipl.auction.model.Player;
 import com.ipl.auction.model.Player.PlayerStatus;
 import com.ipl.auction.model.Team;
+import com.ipl.auction.repository.BidRepository;
 import com.ipl.auction.repository.PlayerRepository;
 import com.ipl.auction.repository.TeamRepository;
 
@@ -17,10 +18,12 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
+    private final BidRepository bidRepository;
 
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository) {
+    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, BidRepository bidRepository) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
+        this.bidRepository = bidRepository;
     }
 
     public List<Player> getAllPlayers() {
@@ -114,9 +117,13 @@ public class PlayerService {
             teamRepository.save(team);
         }
 
+        // Delete all recorded bids for this player
+        bidRepository.deleteByPlayerId(playerId);
+
         player.setTeam(null);
         player.setStatus(PlayerStatus.UNSOLD);
-        player.setBasePrice(player.getOriginalBasePrice());
+        BigDecimal original = player.getOriginalBasePrice() != null ? player.getOriginalBasePrice() : player.getBasePrice();
+        player.setBasePrice(original);
 
         return playerRepository.save(player);
     }

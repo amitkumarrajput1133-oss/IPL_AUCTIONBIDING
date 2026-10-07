@@ -12,7 +12,7 @@ import OrbitArena from './components/OrbitArena';
 import AddPlayerModal from './components/AddPlayerModal';
 import { getTeamTheme } from './teamThemes';
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:8082';
+const BACKEND_URL = import.meta.env.VITE_API_URL || '';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -93,7 +93,8 @@ function App() {
             setMessage(`🎉 HAMMER DOWN! ${soldPlayer.name} SOLD to ${soldPlayer.team.name} for ₹${soldPlayer.basePrice.toLocaleString('en-IN')}!`);
             setTimerActive(false);
           } else {
-            setMessage(`🚫 Player ${soldPlayer.name} marked UNSOLD.`);
+            setMessage(`🚫 Player ${soldPlayer.name} marked UNSOLD. Reverted to base price ₹${soldPlayer.basePrice.toLocaleString('en-IN')}.`);
+            setActiveHighestBid(null);
             setTimerActive(false);
             setTimerSeconds(0);
           }
@@ -105,6 +106,39 @@ function App() {
         stompClient.subscribe('/topic/player-added', (msg) => {
           const newPlayer = JSON.parse(msg.body);
           setMessage(`✨ NEW DRAFT! ${newPlayer.name} (${newPlayer.role}) added to the IPL auction pool!`);
+          fetchInitialData();
+        });
+
+        // Subscribe to global active player stage sync
+        stompClient.subscribe('/topic/auction/active', (msg) => {
+          const data = JSON.parse(msg.body);
+          const targetPlayerId = data.activePlayerId || data.player?.id;
+
+          setPlayers((currentPlayers) => {
+            if (targetPlayerId) {
+              const targetIdx = currentPlayers.findIndex(p => p.id === targetPlayerId);
+              if (targetIdx !== -1) {
+                setCurrentIndex(targetIdx);
+              }
+            }
+            return currentPlayers;
+          });
+
+          setMessage(`🎯 BCCI STAGE SYNC: Live lot is now ${data.player?.name || 'Player'}!`);
+          setTimerSeconds(15.00);
+          setTimerActive(true);
+          if (targetPlayerId) {
+            fetchHighestBid(targetPlayerId);
+          }
+        });
+
+        // Subscribe to bid resets
+        stompClient.subscribe('/topic/bids/reset', (msg) => {
+          const data = JSON.parse(msg.body);
+          setMessage(`🔄 Bids reset for ${data.player?.name || 'player'} back to base price!`);
+          setActiveHighestBid(null);
+          setTimerSeconds(15.00);
+          setTimerActive(false);
           fetchInitialData();
         });
       },
@@ -139,15 +173,29 @@ function App() {
       const config = {
         headers: { Authorization: `Bearer ${user.token}` }
       };
-      const [playersRes, teamsRes] = await Promise.all([
+      const [playersRes, teamsRes, activeAuctionRes] = await Promise.all([
         axios.get(`${BACKEND_URL}/api/players`, config),
-        axios.get(`${BACKEND_URL}/api/teams`, config)
+        axios.get(`${BACKEND_URL}/api/teams`, config),
+        axios.get(`${BACKEND_URL}/api/auction/active`, config).catch(() => ({ data: null }))
       ]);
-      setPlayers(playersRes.data);
-      setTeams(teamsRes.data);
+      const fetchedPlayers = playersRes.data || [];
+      setPlayers(fetchedPlayers);
+      setTeams(teamsRes.data || []);
+
+      if (activeAuctionRes && activeAuctionRes.data && activeAuctionRes.data.player) {
+        const activeId = activeAuctionRes.data.player.id;
+        const activeIdx = fetchedPlayers.findIndex(p => p.id === activeId);
+        if (activeIdx !== -1) {
+          setCurrentIndex(activeIdx);
+        }
+      }
     } catch (error) {
       console.error('Error fetching initial data:', error);
-      setMessage('⚠️ Could not connect to Spring Boot server.');
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        handleLogout();
+      } else {
+        setMessage('⚠️ Could not connect to Spring Boot server.');
+      }
     }
   };
 
@@ -194,6 +242,16 @@ function App() {
   const handlePlaceBid = async (amount, isIncremental) => {
     const currentPlayer = players[currentIndex];
     if (!currentPlayer || !user) return;
+
+    if (currentPlayer.status === 'SOLD') {
+      setMessage('⚠️ Bidding is closed. This player is already sold.');
+      return;
+    }
+
+    if (timerSeconds <= 0) {
+      setMessage('⏱️ Time is up! Bidding is locked for this player until auctioneer advances the lot.');
+      return;
+    }
 
     let targetBidAmount = 0;
     const currentPrice = activeHighestBid ? activeHighestBid.amount : currentPlayer.basePrice;
@@ -267,6 +325,11 @@ function App() {
 
     if (currentPlayer.status === 'SOLD') {
       setMessage('⚠️ Bidding is closed. This player is already sold.');
+      return;
+    }
+
+    if (timerSeconds <= 0) {
+      setMessage('⏱️ Time is up! Bidding is locked for this player until auctioneer advances the lot.');
       return;
     }
 
@@ -361,28 +424,75 @@ function App() {
     }
   };
 
+  const handleResetBid = async () => {
+    const currentPlayer = players[currentIndex];
+    if (!currentPlayer || !user) return;
+
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+
+      await axios.post(`${BACKEND_URL}/api/bids/player/${currentPlayer.id}/reset`, {}, config);
+      setActiveHighestBid(null);
+      setTimerSeconds(15.00);
+      setTimerActive(false);
+      setMessage(`🔄 Bids reset to base price for ${currentPlayer.name}`);
+      fetchInitialData();
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.message;
+      setMessage(`❌ Failed to reset bid: ${errMsg}`);
+    }
+  };
+
+  const broadcastActiveLot = async (targetPlayerId) => {
+    if (!user || user.role !== 'ADMIN') return;
+    try {
+      const config = {
+        headers: { Authorization: `Bearer ${user.token}` }
+      };
+      await axios.post(`${BACKEND_URL}/api/auction/active/${targetPlayerId}`, {}, config);
+    } catch (err) {
+      console.error('Error syncing active lot:', err);
+      const errMsg = err.response?.data?.error || err.message;
+      setMessage(`❌ Stage Sync Error: ${errMsg}`);
+    }
+  };
+
   const handleNextPlayer = () => {
     if (currentIndex < players.length - 1) {
-      setCurrentIndex(prev => prev + 1);
+      const nextIdx = currentIndex + 1;
+      const nextPlayer = players[nextIdx];
+      setCurrentIndex(nextIdx);
       setMessage('');
+      if (user.role === 'ADMIN' && nextPlayer) {
+        broadcastActiveLot(nextPlayer.id);
+      }
     }
   };
 
   const handlePrevPlayer = () => {
     if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
+      const prevIdx = currentIndex - 1;
+      const prevPlayer = players[prevIdx];
+      setCurrentIndex(prevIdx);
       setMessage('');
+      if (user.role === 'ADMIN' && prevPlayer) {
+        broadcastActiveLot(prevPlayer.id);
+      }
     }
   };
 
   const handlePlayerAdded = (newPlayer) => {
     setPlayers(prev => {
       const updated = [...prev, newPlayer];
-      // Switch active index to the newly drafted player
       setCurrentIndex(updated.length - 1);
       return updated;
     });
-    setMessage(`✨ DRAFT SUCCESS: ${newPlayer.name} is now LIVE in the auction pool!`);
+    if (user.role === 'ADMIN' && newPlayer?.id) {
+      broadcastActiveLot(newPlayer.id);
+    }
+    setMessage(`✨ DRAFT SUCCESS: ${newPlayer.name} is now LIVE on the auction stage!`);
     fetchInitialData();
   };
 
@@ -528,9 +638,11 @@ function App() {
                 user={user}
                 player={displayPlayer}
                 teamTheme={teamTheme}
+                timerSeconds={timerSeconds}
                 onPlaceBid={handlePlaceBid}
                 onSellPlayer={handleSellPlayer}
                 onUnsoldPlayer={handleUnsoldPlayer}
+                onResetBid={handleResetBid}
                 onPrevPlayer={handlePrevPlayer}
                 onNextPlayer={handleNextPlayer}
                 onOpenAddPlayer={() => setIsAddPlayerModalOpen(true)}

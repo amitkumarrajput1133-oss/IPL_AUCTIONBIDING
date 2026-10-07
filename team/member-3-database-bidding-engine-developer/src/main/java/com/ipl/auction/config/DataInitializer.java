@@ -33,81 +33,78 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        // 1. Check if database is already seeded
-        if (userRepository.count() > 0 || teamRepository.count() > 0 || playerRepository.count() > 0) {
-            System.out.println("🌱 Database already initialized. Skipping seeding.");
-            return;
+        // 1. Seed Teams if empty
+        List<Team> savedTeams;
+        if (teamRepository.count() == 0) {
+            List<Team> iplTeams = Arrays.asList(
+                    new Team("Chennai Super Kings", new BigDecimal("1000000000")),
+                    new Team("Mumbai Indians", new BigDecimal("1000000000")),
+                    new Team("Royal Challengers Bengaluru", new BigDecimal("1000000000")),
+                    new Team("Kolkata Knight Riders", new BigDecimal("1000000000")),
+                    new Team("Rajasthan Royals", new BigDecimal("1000000000")),
+                    new Team("Sunrisers Hyderabad", new BigDecimal("1000000000")),
+                    new Team("Delhi Capitals", new BigDecimal("1000000000")),
+                    new Team("Gujarat Titans", new BigDecimal("1000000000")),
+                    new Team("Lucknow Super Giants", new BigDecimal("1000000000")),
+                    new Team("Punjab Kings", new BigDecimal("1000000000")));
+            savedTeams = teamRepository.saveAll(iplTeams);
+            System.out.println("✅ SUCCESSFULLY SEEDED 10 IPL TEAMS!");
+        } else {
+            savedTeams = teamRepository.findAll();
         }
 
-        // 2. Seed All 10 Official IPL Teams
+        // 2. Seed Users if empty
+        if (userRepository.count() == 0) {
+            userRepository.save(new User("admin", passwordEncoder.encode("admin123"), "ADMIN"));
 
-        
-        // Seed All 10 Official IPL Teams
-        List<Team> iplTeams = Arrays.asList(
-                new Team("Chennai Super Kings", new BigDecimal("1000000000")),
-                new Team("Mumbai Indians", new BigDecimal("1000000000")),
-                new Team("Royal Challengers Bengaluru", new BigDecimal("1000000000")),
-                new Team("Kolkata Knight Riders", new BigDecimal("1000000000")),
-                new Team("Rajasthan Royals", new BigDecimal("1000000000")),
-                new Team("Sunrisers Hyderabad", new BigDecimal("1000000000")),
-                new Team("Delhi Capitals", new BigDecimal("1000000000")),
-                new Team("Gujarat Titans", new BigDecimal("1000000000")),
-                new Team("Lucknow Super Giants", new BigDecimal("1000000000")),
-                new Team("Punjab Kings", new BigDecimal("1000000000")));
-        List<Team> savedTeams = teamRepository.saveAll(iplTeams);
-        System.out.println("=================================================");
-        System.out.println("✅ SUCCESSFULLY SEEDED 10 IPL TEAMS!");
-
-        // Seed Users
-        // 1. Seed Admin
-        userRepository.save(new User("admin", passwordEncoder.encode("admin123"), "ADMIN"));
-
-        // 2. Seed Team Owners (mapped to each official team)
-        for (Team team : savedTeams) {
-            String alias = getTeamAlias(team.getName());
-            String username = alias.toLowerCase() + "_owner";
-            String rawPassword = alias.toLowerCase() + "123";
-            userRepository.save(new User(username, passwordEncoder.encode(rawPassword), "TEAM_OWNER", team));
-            System.out.println(
-                    "   👤 Seeded Owner: " + username + " (password: " + rawPassword + ") for " + team.getName());
+            for (Team team : savedTeams) {
+                String alias = getTeamAlias(team.getName());
+                String username = alias.toLowerCase() + "_owner";
+                String rawPassword = alias.toLowerCase() + "123";
+                userRepository.save(new User(username, passwordEncoder.encode(rawPassword), "TEAM_OWNER", team));
+                System.out.println(
+                        "   👤 Seeded Owner: " + username + " (password: " + rawPassword + ") for " + team.getName());
+            }
+            System.out.println("✅ SUCCESSFULLY SEEDED AUTHENTICATED USERS!");
         }
-        System.out.println("✅ SUCCESSFULLY SEEDED AUTHENTICATED USERS!");
 
-        // Seed Expanded 23-Player Pool
-        List<Player> playerPool = Arrays.asList(
-                // Marquee Batsmen
-                createPlayer("Virat Kohli", "Batsman", "20000000"),
-                createPlayer("Rohit Sharma", "Batsman", "20000000"),
-                createPlayer("Suryakumar Yadav", "Batsman", "20000000"),
-                createPlayer("Shubman Gill", "Batsman", "20000000"),
-                createPlayer("Yashasvi Jaiswal", "Batsman", "20000000"),
-                createPlayer("Travis Head", "Batsman", "20000000", "Australia", true),
+        // 3. Seed Players if empty
+        if (playerRepository.count() == 0) {
+            List<Player> playerPool = Arrays.asList(
+                    // Marquee Batsmen
+                    createPlayer("Virat Kohli", "Batsman", "20000000"),
+                    createPlayer("Rohit Sharma", "Batsman", "20000000"),
+                    createPlayer("Suryakumar Yadav", "Batsman", "20000000"),
+                    createPlayer("Shubman Gill", "Batsman", "20000000"),
+                    createPlayer("Yashasvi Jaiswal", "Batsman", "20000000"),
+                    createPlayer("Travis Head", "Batsman", "20000000", "Australia", true),
 
-                // Wicketkeeper Batsmen
-                createPlayer("MS Dhoni", "Wicketkeeper-Batsman", "20000000"),
-                createPlayer("Rishabh Pant", "Wicketkeeper-Batsman", "20000000"),
-                createPlayer("KL Rahul", "Wicketkeeper-Batsman", "20000000"),
-                createPlayer("Heinrich Klaasen", "Wicketkeeper-Batsman", "20000000", "South Africa", true),
-                createPlayer("Sanju Samson", "Wicketkeeper-Batsman", "20000000"),
+                    // Wicketkeeper Batsmen
+                    createPlayer("MS Dhoni", "Wicketkeeper-Batsman", "20000000"),
+                    createPlayer("Rishabh Pant", "Wicketkeeper-Batsman", "20000000"),
+                    createPlayer("KL Rahul", "Wicketkeeper-Batsman", "20000000"),
+                    createPlayer("Heinrich Klaasen", "Wicketkeeper-Batsman", "20000000", "South Africa", true),
+                    createPlayer("Sanju Samson", "Wicketkeeper-Batsman", "20000000"),
 
-                // All-Rounders
-                createPlayer("Hardik Pandya", "All-Rounder", "15000000"),
-                createPlayer("Ravindra Jadeja", "All-Rounder", "20000000"),
-                createPlayer("Axar Patel", "All-Rounder", "15000000"),
-                createPlayer("Sunil Narine", "All-Rounder", "15000000", "West Indies", true),
-                createPlayer("Marcus Stoinis", "All-Rounder", "15000000", "Australia", true),
+                    // All-Rounders
+                    createPlayer("Hardik Pandya", "All-Rounder", "15000000"),
+                    createPlayer("Ravindra Jadeja", "All-Rounder", "20000000"),
+                    createPlayer("Axar Patel", "All-Rounder", "15000000"),
+                    createPlayer("Sunil Narine", "All-Rounder", "15000000", "West Indies", true),
+                    createPlayer("Marcus Stoinis", "All-Rounder", "15000000", "Australia", true),
 
-                // Bowlers
-                createPlayer("Jasprit Bumrah", "Bowler", "20000000"),
-                createPlayer("Kuldeep Yadav", "Bowler", "15000000"),
-                createPlayer("Rashid Khan", "Bowler", "20000000", "Afghanistan", true),
-                createPlayer("Mitchell Starc", "Bowler", "20000000", "Australia", true),
-                createPlayer("Pat Cummins", "Bowler", "20000000", "Australia", true),
-                createPlayer("Yuzvendra Chahal", "Bowler", "15000000"),
-                createPlayer("Mohammed Siraj", "Bowler", "15000000"));
+                    // Bowlers
+                    createPlayer("Jasprit Bumrah", "Bowler", "20000000"),
+                    createPlayer("Kuldeep Yadav", "Bowler", "15000000"),
+                    createPlayer("Rashid Khan", "Bowler", "20000000", "Afghanistan", true),
+                    createPlayer("Mitchell Starc", "Bowler", "20000000", "Australia", true),
+                    createPlayer("Pat Cummins", "Bowler", "20000000", "Australia", true),
+                    createPlayer("Yuzvendra Chahal", "Bowler", "15000000"),
+                    createPlayer("Mohammed Siraj", "Bowler", "15000000"));
 
-        playerRepository.saveAll(playerPool);
-        System.out.println("✅ SUCCESSFULLY SEEDED 23 IPL PLAYERS!");
+            playerRepository.saveAll(playerPool);
+            System.out.println("✅ SUCCESSFULLY SEEDED 23 IPL PLAYERS!");
+        }
         System.out.println("=================================================");
     }
 
