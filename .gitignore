@@ -20,3 +20,4 @@ Thumbs.db
 # Team distribution zip archives
 member_packages/
 *.zip
+*.exe

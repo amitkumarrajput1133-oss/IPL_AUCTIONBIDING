@@ -7,4 +7,20 @@ export default defineConfig({
   define: {
     global: 'window',
   },
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    allowedHosts: true,
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8082',
+        changeOrigin: true,
+      },
+      '/ws-auction': {
+        target: 'http://127.0.0.1:8082',
+        ws: true,
+        changeOrigin: true,
+      },
+    },
+  },
 });

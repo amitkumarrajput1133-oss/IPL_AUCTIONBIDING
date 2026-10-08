@@ -42,7 +42,14 @@ public class PlayerController {
 
     @PostMapping
     public ResponseEntity<Player> createPlayer(@Valid @RequestBody Player player) {
+        if (player.getOriginalBasePrice() == null) {
+            player.setOriginalBasePrice(player.getBasePrice());
+        }
+        if (player.getStatus() == null) {
+            player.setStatus(Player.PlayerStatus.UNSOLD);
+        }
         Player created = playerService.createPlayer(player);
+        messagingTemplate.convertAndSend("/topic/player-added", created);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -125,6 +132,11 @@ public class PlayerController {
 
         // Broadcast real-time player sale/unsold update to all connected devices
         messagingTemplate.convertAndSend("/topic/players", unsoldPlayer);
+        messagingTemplate.convertAndSend("/topic/bids/reset", (Object) Map.of(
+                "playerId", id,
+                "player", unsoldPlayer,
+                "message", "Player " + unsoldPlayer.getName() + " marked UNSOLD, value reset to base price ₹" + unsoldPlayer.getBasePrice()
+        ));
 
         return ResponseEntity.ok(unsoldPlayer);
     }

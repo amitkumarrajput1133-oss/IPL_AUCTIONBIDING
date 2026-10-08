@@ -6,9 +6,13 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.ipl.auction.model.Auction;
+import com.ipl.auction.model.Auction.AuctionStatus;
 import com.ipl.auction.model.Player;
 import com.ipl.auction.model.Player.PlayerStatus;
 import com.ipl.auction.model.Team;
+import com.ipl.auction.repository.AuctionRepository;
+import com.ipl.auction.repository.BidRepository;
 import com.ipl.auction.repository.PlayerRepository;
 import com.ipl.auction.repository.TeamRepository;
 
@@ -17,10 +21,14 @@ public class PlayerService {
 
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
+    private final BidRepository bidRepository;
+    private final AuctionRepository auctionRepository;
 
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository) {
+    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, BidRepository bidRepository, AuctionRepository auctionRepository) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
+        this.bidRepository = bidRepository;
+        this.auctionRepository = auctionRepository;
     }
 
     public List<Player> getAllPlayers() {
@@ -98,7 +106,18 @@ public class PlayerService {
         player.setStatus(PlayerStatus.SOLD);
         player.setBasePrice(finalPrice);
 
-        return playerRepository.save(player);
+        Player savedPlayer = playerRepository.save(player);
+
+        auctionRepository.findByStatus(AuctionStatus.LIVE).ifPresent(auction -> {
+            if (auction.getPlayer() != null && auction.getPlayer().getId().equals(playerId)) {
+                auction.setStatus(AuctionStatus.COMPLETED);
+                auction.setCurrentBid(finalPrice);
+                auction.setHighestBidder(team);
+                auctionRepository.save(auction);
+            }
+        });
+
+        return savedPlayer;
     }
 
     @Transactional
@@ -114,10 +133,24 @@ public class PlayerService {
             teamRepository.save(team);
         }
 
+        // Delete all recorded bids for this player
+        bidRepository.deleteByPlayerId(playerId);
+
         player.setTeam(null);
         player.setStatus(PlayerStatus.UNSOLD);
-        player.setBasePrice(player.getOriginalBasePrice());
+        BigDecimal original = player.getOriginalBasePrice() != null ? player.getOriginalBasePrice() : player.getBasePrice();
+        player.setBasePrice(original);
 
-        return playerRepository.save(player);
+        Player savedPlayer = playerRepository.save(player);
+
+        auctionRepository.findByStatus(AuctionStatus.LIVE).ifPresent(auction -> {
+            if (auction.getPlayer() != null && auction.getPlayer().getId().equals(playerId)) {
+                auction.setCurrentBid(original);
+                auction.setHighestBidder(null);
+                auctionRepository.save(auction);
+            }
+        });
+
+        return savedPlayer;
     }
 }

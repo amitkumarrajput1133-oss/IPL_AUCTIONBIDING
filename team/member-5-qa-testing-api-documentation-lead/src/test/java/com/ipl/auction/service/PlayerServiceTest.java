@@ -2,6 +2,7 @@ package com.ipl.auction.service;
 
 import com.ipl.auction.model.Player;
 import com.ipl.auction.model.Team;
+import com.ipl.auction.repository.BidRepository;
 import com.ipl.auction.repository.PlayerRepository;
 import com.ipl.auction.repository.TeamRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +28,9 @@ public class PlayerServiceTest {
     @Mock
     private TeamRepository teamRepository;
 
+    @Mock
+    private BidRepository bidRepository;
+
     @InjectMocks
     private PlayerService playerService;
 
@@ -39,6 +43,7 @@ public class PlayerServiceTest {
         player.setId(1L);
         player.setName("Jasprit Bumrah");
         player.setBasePrice(new BigDecimal("20000000"));
+        player.setOriginalBasePrice(new BigDecimal("20000000"));
         player.setStatus(Player.PlayerStatus.UNSOLD);
 
         team = new Team();
@@ -85,5 +90,25 @@ public class PlayerServiceTest {
         assertTrue(exception.getMessage().contains("does not have sufficient budget"));
         verify(teamRepository, never()).save(any(Team.class));
         verify(playerRepository, never()).save(any(Player.class));
+    }
+
+    @Test
+    void testMarkUnsold_WipesBidsAndResetsPrice() {
+        player.setOriginalBasePrice(new BigDecimal("20000000"));
+        player.setBasePrice(new BigDecimal("95000000")); // current bumped bidding price
+        player.setStatus(Player.PlayerStatus.UNSOLD);
+
+        when(playerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(player));
+        when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Player result = playerService.markUnsold(1L);
+
+        assertNotNull(result);
+        assertEquals(Player.PlayerStatus.UNSOLD, result.getStatus());
+        assertEquals(new BigDecimal("20000000"), result.getBasePrice());
+        assertNull(result.getTeam());
+
+        verify(bidRepository, times(1)).deleteByPlayerId(1L);
+        verify(playerRepository, times(1)).save(player);
     }
 }

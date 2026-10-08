@@ -147,4 +147,49 @@ public class BidServiceTest {
         assertTrue(exception.getMessage().contains("must be higher than the current highest bid"));
         verify(bidRepository, never()).save(any(Bid.class));
     }
+
+    @Test
+    void testResetBidsForPlayer_Success() {
+        player.setOriginalBasePrice(new BigDecimal("20000000"));
+        player.setBasePrice(new BigDecimal("35000000")); // current bumped price
+
+        when(playerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(player));
+        when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Player resetPlayer = bidService.resetBidsForPlayer(1L);
+
+        assertNotNull(resetPlayer);
+        assertEquals(new BigDecimal("20000000"), resetPlayer.getBasePrice());
+        assertEquals(Player.PlayerStatus.UNSOLD, resetPlayer.getStatus());
+        assertNull(resetPlayer.getTeam());
+
+        verify(bidRepository, times(1)).deleteByPlayerId(1L);
+        verify(playerRepository, times(1)).save(player);
+    }
+
+    @Test
+    void testResetBidsForPlayer_PreviouslySold_RefundsBudget() {
+        player.setOriginalBasePrice(new BigDecimal("20000000"));
+        player.setBasePrice(new BigDecimal("50000000")); // Sold at 5 Cr
+        player.setStatus(Player.PlayerStatus.SOLD);
+        player.setTeam(teamcsk);
+
+        teamcsk.setBudget(new BigDecimal("950000000")); // 95 Cr left
+
+        when(playerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(player));
+        when(teamRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(teamcsk));
+        when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Player resetPlayer = bidService.resetBidsForPlayer(1L);
+
+        assertNotNull(resetPlayer);
+        assertEquals(new BigDecimal("20000000"), resetPlayer.getBasePrice());
+        assertEquals(Player.PlayerStatus.UNSOLD, resetPlayer.getStatus());
+        assertNull(resetPlayer.getTeam());
+        assertEquals(new BigDecimal("1000000000"), teamcsk.getBudget()); // 95 + 5 = 100 Cr
+
+        verify(teamRepository, times(1)).save(teamcsk);
+        verify(bidRepository, times(1)).deleteByPlayerId(1L);
+        verify(playerRepository, times(1)).save(player);
+    }
 }
