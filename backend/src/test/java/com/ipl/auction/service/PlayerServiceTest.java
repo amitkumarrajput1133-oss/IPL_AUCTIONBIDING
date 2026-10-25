@@ -1,8 +1,12 @@
 package com.ipl.auction.service;
 
+import com.ipl.auction.model.Bid;
 import com.ipl.auction.model.Player;
 import com.ipl.auction.model.Team;
+<<<<<<< HEAD
 import com.ipl.auction.repository.AuctionRepository;
+=======
+>>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 import com.ipl.auction.repository.BidRepository;
 import com.ipl.auction.repository.PlayerRepository;
 import com.ipl.auction.repository.TeamRepository;
@@ -14,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -33,7 +38,11 @@ public class PlayerServiceTest {
     private BidRepository bidRepository;
 
     @Mock
+<<<<<<< HEAD
     private AuctionRepository auctionRepository;
+=======
+    private AuctionService auctionService;
+>>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 
     @InjectMocks
     private PlayerService playerService;
@@ -46,8 +55,12 @@ public class PlayerServiceTest {
         player = new Player();
         player.setId(1L);
         player.setName("Jasprit Bumrah");
+<<<<<<< HEAD
         player.setBasePrice(new BigDecimal("20000000"));
         player.setOriginalBasePrice(new BigDecimal("20000000"));
+=======
+        player.setBasePrice(new BigDecimal("20000000")); // 2 Cr
+>>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
         player.setStatus(Player.PlayerStatus.UNSOLD);
 
         team = new Team();
@@ -58,17 +71,24 @@ public class PlayerServiceTest {
 
     @Test
     void testSellPlayer_Success() {
+        BigDecimal finalPrice = new BigDecimal("80000000"); // 8 Cr
+
+        Bid winningBid = new Bid();
+        winningBid.setPlayer(player);
+        winningBid.setTeam(team);
+        winningBid.setAmount(finalPrice);
+
         when(playerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(player));
+        when(bidRepository.findByPlayerIdOrderByAmountDesc(1L)).thenReturn(Collections.singletonList(winningBid));
         when(teamRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(team));
         when(playerRepository.save(any(Player.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        BigDecimal finalPrice = new BigDecimal("80000000"); // 8 Cr
         Player result = playerService.sellPlayer(1L, 5L, finalPrice);
 
         assertNotNull(result);
         assertEquals(Player.PlayerStatus.SOLD, result.getStatus());
         assertEquals(team, result.getTeam());
-        assertEquals(finalPrice, result.getBasePrice());
+        assertEquals(new BigDecimal("20000000"), result.getBasePrice()); // Immutable base price preserved
         
         // Budget deduction check: 100 Cr - 8 Cr = 92 Cr
         BigDecimal expectedBudget = new BigDecimal("920000000");
@@ -76,16 +96,22 @@ public class PlayerServiceTest {
 
         verify(teamRepository, times(1)).save(team);
         verify(playerRepository, times(1)).save(player);
+        verify(auctionService, times(1)).recordSold(player, team, finalPrice);
     }
 
     @Test
     void testSellPlayer_InsufficientBudget() {
         team.setBudget(new BigDecimal("50000000")); // 5 Cr
+        BigDecimal finalPrice = new BigDecimal("80000000"); // 8 Cr
+
+        Bid winningBid = new Bid();
+        winningBid.setPlayer(player);
+        winningBid.setTeam(team);
+        winningBid.setAmount(finalPrice);
 
         when(playerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(player));
+        when(bidRepository.findByPlayerIdOrderByAmountDesc(1L)).thenReturn(Collections.singletonList(winningBid));
         when(teamRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(team));
-
-        BigDecimal finalPrice = new BigDecimal("80000000"); // 8 Cr (Exceeds 5 Cr budget)
 
         RuntimeException exception = assertThrows(RuntimeException.class, () -> {
             playerService.sellPlayer(1L, 5L, finalPrice);

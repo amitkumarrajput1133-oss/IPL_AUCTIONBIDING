@@ -11,4 +11,5 @@ import com.ipl.auction.model.Auction.AuctionStatus;
 @Repository
 public interface AuctionRepository extends JpaRepository<Auction, Long> {
     Optional<Auction> findByStatus(AuctionStatus status);
+    Optional<Auction> findFirstByOrderByIdDesc();
 }

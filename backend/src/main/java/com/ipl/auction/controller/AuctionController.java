@@ -1,5 +1,6 @@
 package com.ipl.auction.controller;
 
+<<<<<<< HEAD
 import com.ipl.auction.config.TokenUtil;
 import com.ipl.auction.model.Auction;
 import com.ipl.auction.service.AuctionService;
@@ -9,6 +10,13 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+=======
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.ipl.auction.model.Auction;
+import com.ipl.auction.service.AuctionService;
+>>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 
 @RestController
 @RequestMapping("/api/auction")
@@ -16,6 +24,7 @@ import java.util.Map;
 public class AuctionController {
 
     private final AuctionService auctionService;
+<<<<<<< HEAD
     private final SimpMessagingTemplate messagingTemplate;
     private final TokenUtil tokenUtil;
 
@@ -74,5 +83,31 @@ public class AuctionController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("error", ex.getMessage()));
         }
+=======
+
+    public AuctionController(AuctionService auctionService) {
+        this.auctionService = auctionService;
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<Auction> getActiveAuction() {
+        Auction auction = auctionService.getActiveAuction();
+        return auction != null ? ResponseEntity.ok(auction) : ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/active/{playerId}")
+    public ResponseEntity<Auction> setCurrentPlayer(@PathVariable Long playerId) {
+        return ResponseEntity.ok(auctionService.setCurrentPlayer(playerId));
+    }
+
+    @PostMapping("/next")
+    public ResponseEntity<Auction> nextPlayer() {
+        return ResponseEntity.ok(auctionService.nextPlayer());
+    }
+
+    @PostMapping("/prev")
+    public ResponseEntity<Auction> prevPlayer() {
+        return ResponseEntity.ok(auctionService.previousPlayer());
+>>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     }
 }

@@ -1,48 +1,77 @@
-# 🏏 Real-Time IPL Auction System (5-Member Team Project)
+# 🏏 Real-Time IPL Auction System
 
-Welcome to the **IPL Auction System** enterprise codebase. This project simulates a live, full-scale Indian Premier League (IPL) mega auction with real-time bidding, pessimistic concurrency locking, Spring Security JWT authentication, and a cybernetic dark-neon frontend.
-
----
-
-## 👥 5-Member Team Role Directories & Work Copies
-
-Each team member has their dedicated workspace folder under [`team/`](file:///c:/Users/hp/ipl_auction_system%20complete/team/) with their isolated copy of work and step-by-step **Week 1 AI Mentor Guides**:
-
-| Member & Role | Dedicated Folder | Git Branch | Core Assigned Scope |
-| :--- | :--- | :--- | :--- |
-| **Member 1: Project Lead & Core Backend** | [`team/member-1-project-lead-core-backend`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-1-project-lead-core-backend/README.md) | `feature/core-backend` | Spring Boot base, Team CRUD, Player CRUD, Purse deduction rules, Squad caps, Global Exception Handler |
-| **Member 2: Security & Authentication Specialist** | [`team/member-2-security-authentication-specialist`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-2-security-authentication-specialist/README.md) | `feature/security-auth` | Spring Security 6, JWT TokenUtil, TokenAuthenticationFilter, WebSocket security, Auth REST APIs, RBAC |
-| **Member 3: Database & Bidding Engine Developer** | [`team/member-3-database-bidding-engine-developer`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-3-database-bidding-engine-developer/README.md) | `feature/database-bidding` | MySQL DDL `schema.sql`, JPA Entities, Pessimistic Row Locking (`@Lock`), Live Bidding REST APIs, Purse validation |
-| **Member 4: Frontend & API Integration Lead** | [`team/member-4-frontend-api-integration-lead`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-4-frontend-api-integration-lead/README.md) | `feature/frontend-ui` | Vite + React SPA, Cybernetic Dark Cricket Design System (`index.css`), Auth UI, PlayerCard, OrbitArena, Leaderboard |
-| **Member 5: QA, Testing & API Documentation Lead** | [`team/member-5-qa-testing-api-documentation-lead`](file:///c:/Users/hp/ipl_auction_system%20complete/team/member-5-qa-testing-api-documentation-lead/README.md) | `feature/qa-testing-docs` | OpenAPI 3 / Swagger UI (`OpenApiConfig`), Postman collections, JUnit 5 + Mockito tests, Edge-case suite, GitHub Actions CI |
+A real-time IPL auction platform with live synchronized bidding, optimistic and pessimistic concurrency control, role-based JWT security, and interactive client dashboards.
 
 ---
 
-## 🚀 Quick Start & How to Run
+## ⚡ Tech Stack
 
-### 1. Run MySQL & Backend
+* **Backend:** Java 17, Spring Boot 3, Spring Security 6, Spring Data JPA, Hibernate, STOMP WebSockets, H2 Database (MySQL Mode).
+* **Frontend:** React 18, Vite, STOMP over SockJS, Axios, CSS Modules / Custom Design System.
+* **Testing & Docs:** JUnit 5, Mockito, SpringDoc OpenAPI 3 (Swagger UI).
+
+---
+
+## 🏗 Architecture Overview
+
+1. **Synchronized Auction Engine:**
+   - Centralized `Auction` state on the server tracks the live player on the hammer, current highest bid, leading franchise, and countdown clock.
+   - Any bid or auction event automatically broadcasts via WebSocket (`/topic/auction-state`, `/topic/bids`) to keep all connected franchise consoles in sync.
+
+2. **Concurrency & Integrity:**
+   - Row-level pessimistic locking (`PESSIMISTIC_WRITE`) on teams and players ensures atomic purse deductions and bid tracking under simultaneous bidding requests.
+   - Base prices are immutable; current bid pricing is isolated to active auction rounds.
+   - Franchise budget validation and squad quotas (max 25 players, max 8 overseas) are enforced on the server before finalizing sales.
+
+3. **Authentication & Authorization:**
+   - Token-based HMAC-SHA256 authentication with role-based access control (RBAC).
+   - Roles: `ADMIN` (Auctioneer) and `TEAM_OWNER` (Franchise Bidders).
+   - Dedicated WebSocket handshake and STOMP channel security interceptors ensure only authenticated connections can interact.
+
+---
+
+## 🚀 Getting Started
+
+### 1. Start the Backend
+From the repository root:
 ```bash
-# Option A: With Docker Compose
-docker-compose up -d
-
-# Option B: Run Spring Boot directly
 cd backend
-..\mvnw spring-boot:run
+..\mvnw.cmd spring-boot:run
 ```
+* Backend runs on **`http://localhost:8082`**
+* Swagger UI documentation: **`http://localhost:8082/swagger-ui/index.html`**
+* In-Memory H2 Database Console: **`http://localhost:8082/h2-console`** (`jdbc:h2:mem:ipl_auction_db`)
 
-Backend will start on: **`http://localhost:8080`**  
-Swagger API Docs: **`http://localhost:8080/swagger-ui/index.html`**
-
-### 2. Run Frontend
+### 2. Start the Frontend
+In a new terminal:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-
-Frontend will start on: **`http://localhost:5173`**
+* Frontend runs on **`http://localhost:5173`**
 
 ---
 
-## 📖 Team Guidelines
-See [`TEAM_GUIDE.md`](file:///c:/Users/hp/ipl_auction_system%20complete/TEAM_GUIDE.md) and [`TEAM_ROLES.txt`](file:///c:/Users/hp/ipl_auction_system%20complete/TEAM_ROLES.txt) for branch policies, code boundaries, and Week 1-12 workflows.
+## 🔑 Default Seed Credentials
+
+On startup, the system seeds the 10 official IPL franchises, marquee player pool, and default test accounts:
+
+| Role | Username | Password | Assigned Franchise |
+| :--- | :--- | :--- | :--- |
+| **Auctioneer (Admin)** | `admin` | `admin123` | *All Franchises (Global Control)* |
+| **Team Owner** | `csk_owner` | `csk123` | Chennai Super Kings |
+| **Team Owner** | `mi_owner` | `mi123` | Mumbai Indians |
+| **Team Owner** | `rcb_owner` | `rcb123` | Royal Challengers Bengaluru |
+| **Team Owner** | `kkr_owner` | `kkr123` | Kolkata Knight Riders |
+| *(Other Franchises)* | `<alias>_owner` | `<alias>123` | *Respective IPL Franchise* |
+
+---
+
+## 🧪 Testing
+
+To run the automated JUnit 5 and Mockito test suites:
+```bash
+cd backend
+..\mvnw.cmd test
+```
