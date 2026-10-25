@@ -203,33 +203,18 @@ function App() {
       const config = {
         headers: { Authorization: `Bearer ${user.token}` }
       };
-<<<<<<< HEAD
-      const [playersRes, teamsRes, activeAuctionRes] = await Promise.all([
-        axios.get(`${BACKEND_URL}/api/players`, config),
-        axios.get(`${BACKEND_URL}/api/teams`, config),
-        axios.get(`${BACKEND_URL}/api/auction/active`, config).catch(() => ({ data: null }))
-      ]);
-      const fetchedPlayers = playersRes.data || [];
-      setPlayers(fetchedPlayers);
-      setTeams(teamsRes.data || []);
-
-      if (activeAuctionRes && activeAuctionRes.data && activeAuctionRes.data.player) {
-        const activeId = activeAuctionRes.data.player.id;
-        const activeIdx = fetchedPlayers.findIndex(p => p.id === activeId);
-        if (activeIdx !== -1) {
-          setCurrentIndex(activeIdx);
-=======
       const [playersRes, teamsRes, auctionRes] = await Promise.all([
         axios.get(`${BACKEND_URL}/api/players`, config),
         axios.get(`${BACKEND_URL}/api/teams`, config),
         axios.get(`${BACKEND_URL}/api/auction/active`, config).catch(() => null)
       ]);
-      setPlayers(playersRes.data);
-      setTeams(teamsRes.data);
+      const fetchedPlayers = playersRes.data || [];
+      setPlayers(fetchedPlayers);
+      setTeams(teamsRes.data || []);
 
       if (auctionRes && auctionRes.data && auctionRes.data.player) {
         const activePlayerId = auctionRes.data.player.id;
-        const foundIdx = playersRes.data.findIndex(p => p.id === activePlayerId);
+        const foundIdx = fetchedPlayers.findIndex(p => p.id === activePlayerId);
         if (foundIdx !== -1) {
           setCurrentIndex(foundIdx);
         }
@@ -238,7 +223,6 @@ function App() {
             amount: auctionRes.data.currentBid,
             team: auctionRes.data.highestBidder
           });
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
         }
       }
     } catch (error) {
@@ -287,7 +271,6 @@ function App() {
     const currentPlayer = players[currentIndex];
     if (!currentPlayer || !user) return;
 
-<<<<<<< HEAD
     if (currentPlayer.status === 'SOLD') {
       setMessage('⚠️ Bidding is closed. This player is already sold.');
       return;
@@ -297,10 +280,6 @@ function App() {
       setMessage('⏱️ Time is up! Bidding is locked for this player until auctioneer advances the lot.');
       return;
     }
-
-    let targetBidAmount = 0;
-=======
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     const currentPrice = activeHighestBid ? activeHighestBid.amount : currentPlayer.basePrice;
     const targetBidAmount = isIncremental ? currentPrice + amount : amount;
 
@@ -362,23 +341,14 @@ function App() {
       return;
     }
 
-<<<<<<< HEAD
     if (timerSeconds <= 0) {
       setMessage('⏱️ Time is up! Bidding is locked for this player until auctioneer advances the lot.');
       return;
     }
 
-    // Role-based restrictions
-    if (user.role === 'TEAM_OWNER') {
-      if (user.teamId !== clickedTeam.id) {
-        setMessage('⚠️ You cannot place a bid on behalf of another team!');
-        return;
-      }
-=======
     if (user.role === 'TEAM_OWNER' && user.teamId !== clickedTeam.id) {
       setMessage('⚠️ You cannot place a bid on behalf of another team!');
       return;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     }
 
     const currentPrice = activeHighestBid ? activeHighestBid.amount : currentPlayer.basePrice;
@@ -457,7 +427,6 @@ function App() {
     }
   };
 
-<<<<<<< HEAD
   const handleResetBid = async () => {
     const currentPlayer = players[currentIndex];
     if (!currentPlayer || !user) return;
@@ -493,12 +462,6 @@ function App() {
     }
   };
 
-  const handleNextPlayer = () => {
-    if (currentIndex < players.length - 1) {
-      const nextIdx = currentIndex + 1;
-      const nextPlayer = players[nextIdx];
-      setCurrentIndex(nextIdx);
-=======
   const handleNextPlayer = async () => {
     if (user && user.role === 'ADMIN') {
       try {
@@ -510,21 +473,10 @@ function App() {
       }
     } else if (currentIndex < players.length - 1) {
       setCurrentIndex(prev => prev + 1);
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
       setMessage('');
-      if (user.role === 'ADMIN' && nextPlayer) {
-        broadcastActiveLot(nextPlayer.id);
-      }
     }
   };
 
-<<<<<<< HEAD
-  const handlePrevPlayer = () => {
-    if (currentIndex > 0) {
-      const prevIdx = currentIndex - 1;
-      const prevPlayer = players[prevIdx];
-      setCurrentIndex(prevIdx);
-=======
   const handlePrevPlayer = async () => {
     if (user && user.role === 'ADMIN') {
       try {
@@ -536,11 +488,7 @@ function App() {
       }
     } else if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
       setMessage('');
-      if (user.role === 'ADMIN' && prevPlayer) {
-        broadcastActiveLot(prevPlayer.id);
-      }
     }
   };
 

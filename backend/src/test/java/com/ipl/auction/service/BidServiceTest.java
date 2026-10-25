@@ -38,11 +38,10 @@ public class BidServiceTest {
     private TeamRepository teamRepository;
 
     @Mock
-<<<<<<< HEAD
     private AuctionRepository auctionRepository;
-=======
+
+    @Mock
     private AuctionService auctionService;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 
     @InjectMocks
     private BidService bidService;

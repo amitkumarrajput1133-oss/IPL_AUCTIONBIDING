@@ -25,27 +25,20 @@ public class BidService {
     private final BidRepository bidRepository;
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
-<<<<<<< HEAD
     private final AuctionRepository auctionRepository;
-
-    public BidService(BidRepository bidRepository, PlayerRepository playerRepository, TeamRepository teamRepository, AuctionRepository auctionRepository) {
-        this.bidRepository = bidRepository;
-        this.playerRepository = playerRepository;
-        this.teamRepository = teamRepository;
-        this.auctionRepository = auctionRepository;
-=======
     private final AuctionService auctionService;
 
     public BidService(
             BidRepository bidRepository,
             PlayerRepository playerRepository,
             TeamRepository teamRepository,
+            AuctionRepository auctionRepository,
             AuctionService auctionService) {
         this.bidRepository = bidRepository;
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
+        this.auctionRepository = auctionRepository;
         this.auctionService = auctionService;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     }
 
     @Transactional
@@ -55,8 +48,8 @@ public class BidService {
         Team team = teamRepository.findByIdForUpdate(teamId)
                 .orElseThrow(() -> new RuntimeException("Team not found with id: " + teamId));
 
-        if (player.getStatus() == Player.PlayerStatus.SOLD) {
-            throw new RuntimeException("Bidding is closed. Player is already sold!");
+        if (player.getStatus() == PlayerStatus.SOLD) {
+            throw new RuntimeException("Bidding is closed! This player is already SOLD.");
         }
 
         // Stage Lock Rule: Bidding is only permitted on the active player lot selected by the Admin
@@ -66,10 +59,6 @@ public class BidService {
             if (liveAuction.getPlayer() != null && !liveAuction.getPlayer().getId().equals(playerId)) {
                 throw new RuntimeException("Bidding locked! Only the active lot (" + liveAuction.getPlayer().getName() + ") can receive bids.");
             }
-        }
-
-        if (player.getStatus() == PlayerStatus.SOLD) {
-            throw new RuntimeException("Bidding is closed! This player is already SOLD.");
         }
 
         BigDecimal currentBudget = team.getBudget() != null ? team.getBudget() : BigDecimal.ZERO;
@@ -108,19 +97,10 @@ public class BidService {
         bid.setBidTime(LocalDateTime.now());
         Bid savedBid = bidRepository.save(bid);
 
-<<<<<<< HEAD
-        player.setBasePrice(amount);
-        playerRepository.save(player);
+        // Update active auction session & broadcast synchronized state
+        auctionService.recordBid(player, team, amount);
 
-        // Update live auction state if present
-        if (liveAuctionOpt.isPresent()) {
-            Auction liveAuction = liveAuctionOpt.get();
-            liveAuction.setCurrentBid(amount);
-            liveAuction.setHighestBidder(team);
-            auctionRepository.save(liveAuction);
-        }
-
-        return bidRepository.save(bid);
+        return savedBid;
     }
 
     @Transactional
@@ -129,7 +109,7 @@ public class BidService {
                 .orElseThrow(() -> new RuntimeException("Player not found"));
 
         // If player was previously sold and assigned to a team, refund the team's purse
-        if (player.getStatus() == Player.PlayerStatus.SOLD && player.getTeam() != null) {
+        if (player.getStatus() == PlayerStatus.SOLD && player.getTeam() != null) {
             Team team = teamRepository.findByIdForUpdate(player.getTeam().getId())
                     .orElseThrow(() -> new RuntimeException("Team not found"));
             BigDecimal refundAmount = player.getBasePrice() != null ? player.getBasePrice() : BigDecimal.ZERO;
@@ -143,23 +123,14 @@ public class BidService {
 
         // Reset player state to UNSOLD, clear team allocation, and revert price to originalBasePrice
         player.setTeam(null);
-        player.setStatus(Player.PlayerStatus.UNSOLD);
+        player.setStatus(PlayerStatus.UNSOLD);
         BigDecimal original = player.getOriginalBasePrice() != null ? player.getOriginalBasePrice() : player.getBasePrice();
         player.setBasePrice(original);
 
         return playerRepository.save(player);
     }
 
-    public java.util.Optional<Bid> getHighestBidForPlayer(Long playerId) {
-=======
-        // Update active auction session & broadcast synchronized state
-        auctionService.recordBid(player, team, amount);
-
-        return savedBid;
-    }
-
     public Optional<Bid> getHighestBidForPlayer(Long playerId) {
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
         List<Bid> bids = bidRepository.findByPlayerIdOrderByAmountDesc(playerId);
         return bids.isEmpty() ? Optional.empty() : Optional.of(bids.get(0));
     }

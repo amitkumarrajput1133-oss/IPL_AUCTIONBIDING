@@ -7,19 +7,10 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-<<<<<<< HEAD
-import com.ipl.auction.model.Auction;
-import com.ipl.auction.model.Auction.AuctionStatus;
-import com.ipl.auction.model.Player;
-import com.ipl.auction.model.Player.PlayerStatus;
-import com.ipl.auction.model.Team;
-import com.ipl.auction.repository.AuctionRepository;
-=======
 import com.ipl.auction.model.Bid;
 import com.ipl.auction.model.Player;
 import com.ipl.auction.model.Player.PlayerStatus;
 import com.ipl.auction.model.Team;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 import com.ipl.auction.repository.BidRepository;
 import com.ipl.auction.repository.PlayerRepository;
 import com.ipl.auction.repository.TeamRepository;
@@ -30,15 +21,6 @@ public class PlayerService {
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
     private final BidRepository bidRepository;
-<<<<<<< HEAD
-    private final AuctionRepository auctionRepository;
-
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, BidRepository bidRepository, AuctionRepository auctionRepository) {
-        this.playerRepository = playerRepository;
-        this.teamRepository = teamRepository;
-        this.bidRepository = bidRepository;
-        this.auctionRepository = auctionRepository;
-=======
     private final AuctionService auctionService;
 
     public PlayerService(
@@ -50,7 +32,6 @@ public class PlayerService {
         this.teamRepository = teamRepository;
         this.bidRepository = bidRepository;
         this.auctionService = auctionService;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     }
 
     public List<Player> getAllPlayers() {
@@ -139,25 +120,10 @@ public class PlayerService {
         player.setStatus(PlayerStatus.SOLD);
         Player saved = playerRepository.save(player);
 
-<<<<<<< HEAD
-        Player savedPlayer = playerRepository.save(player);
-
-        auctionRepository.findByStatus(AuctionStatus.LIVE).ifPresent(auction -> {
-            if (auction.getPlayer() != null && auction.getPlayer().getId().equals(playerId)) {
-                auction.setStatus(AuctionStatus.COMPLETED);
-                auction.setCurrentBid(finalPrice);
-                auction.setHighestBidder(team);
-                auctionRepository.save(auction);
-            }
-        });
-
-        return savedPlayer;
-=======
         // Update synchronized auction state
         auctionService.recordSold(saved, team, winningPrice);
 
         return saved;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     }
 
     @Transactional
@@ -180,27 +146,13 @@ public class PlayerService {
 
         player.setTeam(null);
         player.setStatus(PlayerStatus.UNSOLD);
-<<<<<<< HEAD
         BigDecimal original = player.getOriginalBasePrice() != null ? player.getOriginalBasePrice() : player.getBasePrice();
         player.setBasePrice(original);
 
-        Player savedPlayer = playerRepository.save(player);
-
-        auctionRepository.findByStatus(AuctionStatus.LIVE).ifPresent(auction -> {
-            if (auction.getPlayer() != null && auction.getPlayer().getId().equals(playerId)) {
-                auction.setCurrentBid(original);
-                auction.setHighestBidder(null);
-                auctionRepository.save(auction);
-            }
-        });
-
-        return savedPlayer;
-=======
         Player saved = playerRepository.save(player);
 
         auctionService.recordUnsold(saved);
 
         return saved;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
     }
 }

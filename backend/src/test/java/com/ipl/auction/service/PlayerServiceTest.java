@@ -1,29 +1,32 @@
 package com.ipl.auction.service;
 
-import com.ipl.auction.model.Bid;
-import com.ipl.auction.model.Player;
-import com.ipl.auction.model.Team;
-<<<<<<< HEAD
-import com.ipl.auction.repository.AuctionRepository;
-=======
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
-import com.ipl.auction.repository.BidRepository;
-import com.ipl.auction.repository.PlayerRepository;
-import com.ipl.auction.repository.TeamRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.ipl.auction.model.Bid;
+import com.ipl.auction.model.Player;
+import com.ipl.auction.model.Team;
+import com.ipl.auction.repository.BidRepository;
+import com.ipl.auction.repository.PlayerRepository;
+import com.ipl.auction.repository.TeamRepository;
 
 @ExtendWith(MockitoExtension.class)
 public class PlayerServiceTest {
@@ -38,11 +41,7 @@ public class PlayerServiceTest {
     private BidRepository bidRepository;
 
     @Mock
-<<<<<<< HEAD
-    private AuctionRepository auctionRepository;
-=======
     private AuctionService auctionService;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 
     @InjectMocks
     private PlayerService playerService;
@@ -55,12 +54,8 @@ public class PlayerServiceTest {
         player = new Player();
         player.setId(1L);
         player.setName("Jasprit Bumrah");
-<<<<<<< HEAD
-        player.setBasePrice(new BigDecimal("20000000"));
-        player.setOriginalBasePrice(new BigDecimal("20000000"));
-=======
         player.setBasePrice(new BigDecimal("20000000")); // 2 Cr
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
+        player.setOriginalBasePrice(new BigDecimal("20000000"));
         player.setStatus(Player.PlayerStatus.UNSOLD);
 
         team = new Team();

@@ -1,27 +1,20 @@
 package com.ipl.auction.service;
 
-<<<<<<< HEAD
-import java.util.List;
-import java.util.Optional;
-
-=======
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.messaging.simp.SimpMessagingTemplate;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.ipl.auction.model.Auction;
 import com.ipl.auction.model.Auction.AuctionStatus;
 import com.ipl.auction.model.Player;
-<<<<<<< HEAD
-=======
 import com.ipl.auction.model.Team;
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
 import com.ipl.auction.repository.AuctionRepository;
 import com.ipl.auction.repository.PlayerRepository;
 
@@ -30,47 +23,6 @@ public class AuctionService {
 
     private final AuctionRepository auctionRepository;
     private final PlayerRepository playerRepository;
-<<<<<<< HEAD
-
-    public AuctionService(AuctionRepository auctionRepository, PlayerRepository playerRepository) {
-        this.auctionRepository = auctionRepository;
-        this.playerRepository = playerRepository;
-    }
-
-    public Optional<Auction> getActiveAuction() {
-        return auctionRepository.findByStatus(AuctionStatus.LIVE);
-    }
-
-    @Transactional
-    public Auction setActivePlayer(Long playerId) {
-        Player player = playerRepository.findById(playerId)
-                .orElseThrow(() -> new RuntimeException("Player not found with id: " + playerId));
-
-        // Mark all currently LIVE auctions as COMPLETED
-        List<Auction> allAuctions = auctionRepository.findAll();
-        for (Auction a : allAuctions) {
-            if (a.getStatus() == AuctionStatus.LIVE) {
-                a.setStatus(AuctionStatus.COMPLETED);
-                auctionRepository.save(a);
-            }
-        }
-
-        // Check if there is an existing auction record for this player, or create new
-        Auction activeAuction = allAuctions.stream()
-                .filter(a -> a.getPlayer() != null && a.getPlayer().getId().equals(playerId))
-                .findFirst()
-                .orElseGet(() -> {
-                    Auction a = new Auction();
-                    a.setPlayer(player);
-                    return a;
-                });
-
-        activeAuction.setStatus(AuctionStatus.LIVE);
-        activeAuction.setCurrentBid(player.getBasePrice());
-        activeAuction.setHighestBidder(player.getTeam());
-
-        return auctionRepository.save(activeAuction);
-=======
     private final SimpMessagingTemplate messagingTemplate;
 
     public AuctionService(
@@ -213,6 +165,14 @@ public class AuctionService {
 
     public void broadcastAuctionState(Auction auction) {
         messagingTemplate.convertAndSend("/topic/auction-state", auction);
->>>>>>> 7767837 (refactor: synchronize live auction state, standardize HMAC-SHA256 tokens, and clean repository structure)
+        if (auction != null && auction.getPlayer() != null) {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("activePlayerId", auction.getPlayer().getId());
+            payload.put("player", auction.getPlayer());
+            payload.put("currentBid", auction.getCurrentBid() != null ? auction.getCurrentBid() : auction.getPlayer().getBasePrice());
+            payload.put("status", auction.getStatus().name());
+            payload.put("message", "Auction stage set to " + auction.getPlayer().getName());
+            messagingTemplate.convertAndSend("/topic/auction/active", (Object) payload);
+        }
     }
 }
