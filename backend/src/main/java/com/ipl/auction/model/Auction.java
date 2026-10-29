@@ -27,7 +27,13 @@ public class Auction {
 
     private Integer timerSeconds = 15;
 
+    private boolean timerRunning = false;
+
     private LocalDateTime roundEndTime;
+
+    private Long endTimeMillis;
+
+    private Long remainingMillis = 15000L;
 
     @Version
     private Long version;
@@ -56,8 +62,22 @@ public class Auction {
     public Integer getTimerSeconds() { return timerSeconds; }
     public void setTimerSeconds(Integer timerSeconds) { this.timerSeconds = timerSeconds; }
 
+    public boolean isTimerRunning() { return timerRunning; }
+    public void setTimerRunning(boolean timerRunning) { this.timerRunning = timerRunning; }
+
     public LocalDateTime getRoundEndTime() { return roundEndTime; }
     public void setRoundEndTime(LocalDateTime roundEndTime) { this.roundEndTime = roundEndTime; }
+
+    public Long getEndTimeMillis() { return endTimeMillis; }
+    public void setEndTimeMillis(Long endTimeMillis) { this.endTimeMillis = endTimeMillis; }
+
+    public Long getRemainingMillis() { return remainingMillis; }
+    public void setRemainingMillis(Long remainingMillis) { this.remainingMillis = remainingMillis; }
+
+    @Transient
+    public Long getServerTime() {
+        return System.currentTimeMillis();
+    }
 
     public Long getVersion() { return version; }
 }

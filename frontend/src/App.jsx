@@ -1,5 +1,5 @@
 import { Client } from '@stomp/stompjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import SockJS from 'sockjs-client';
 
@@ -24,9 +24,11 @@ function App() {
   const [activeHighestBid, setActiveHighestBid] = useState(null);
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
 
-  // Timer countdown state
+  // Server-Synchronized Timer State
   const [timerSeconds, setTimerSeconds] = useState(15.00);
   const [timerActive, setTimerActive] = useState(false);
+  const roundEndTimeRef = useRef(null);
+  const serverOffsetRef = useRef(0);
 
   // Load user from session storage on startup
   useEffect(() => {
@@ -37,7 +39,7 @@ function App() {
     setLoading(false);
   }, []);
 
-  // Timer Tick Effect
+  // High-Precision Multi-Terminal Synchronized Timer Effect
   useEffect(() => {
     const currentPlayer = players[currentIndex];
     if (!timerActive || loading || !user || !currentPlayer || currentPlayer.status === 'SOLD') {
@@ -45,17 +47,22 @@ function App() {
     }
 
     const interval = setInterval(() => {
-      setTimerSeconds((prev) => {
-        if (prev <= 0.01) {
-          clearInterval(interval);
-          return 0;
-        }
-        return Number((prev - 0.01).toFixed(2));
-      });
-    }, 10);
+      if (!roundEndTimeRef.current) return;
+      const nowServer = Date.now() + serverOffsetRef.current;
+      const remaining = (roundEndTimeRef.current - nowServer) / 1000;
+
+      if (remaining <= 0.02) {
+        clearInterval(interval);
+        roundEndTimeRef.current = null;
+        setTimerSeconds(0);
+        setTimerActive(false);
+      } else {
+        setTimerSeconds(Number(remaining.toFixed(2)));
+      }
+    }, 25);
 
     return () => clearInterval(interval);
-  }, [timerActive, loading, user, players, currentIndex]);
+  }, [timerActive, loading, user, currentIndex, players[currentIndex]?.status]);
 
   // Fetch initial teams, players and active auction room once user is logged in
   useEffect(() => {
@@ -73,6 +80,10 @@ function App() {
         // 1. Subscribe to synchronized auction room state
         stompClient.subscribe('/topic/auction-state', (msg) => {
           const auction = JSON.parse(msg.body);
+          if (auction.serverTime) {
+            serverOffsetRef.current = auction.serverTime - Date.now();
+          }
+
           if (auction.player) {
             setPlayers(prev => {
               const idx = prev.findIndex(p => p.id === auction.player.id);
@@ -92,19 +103,42 @@ function App() {
             setActiveHighestBid(null);
           }
 
-          if (auction.status === 'LIVE') {
-            setTimerSeconds(15.00);
+          if (auction.status === 'LIVE' && auction.timerRunning) {
+            if (auction.endTimeMillis) {
+              roundEndTimeRef.current = auction.endTimeMillis;
+              const nowServer = Date.now() + serverOffsetRef.current;
+              const rem = Math.max(0, (auction.endTimeMillis - nowServer) / 1000);
+              setTimerSeconds(Number(rem.toFixed(2)));
+            } else {
+              const rem = auction.remainingMillis ? auction.remainingMillis / 1000 : (auction.timerSeconds || 15.00);
+              roundEndTimeRef.current = (Date.now() + serverOffsetRef.current) + rem * 1000;
+              setTimerSeconds(Number(rem.toFixed(2)));
+            }
             setTimerActive(true);
           } else if (auction.status === 'SOLD') {
+            roundEndTimeRef.current = null;
             setTimerActive(false);
             setTimerSeconds(0);
             setMessage(`🎉 HAMMER DOWN! Sold to ${auction.highestBidder ? auction.highestBidder.name : 'Franchise'} for ₹${Number(auction.currentBid).toLocaleString('en-IN')}!`);
           } else if (auction.status === 'UNSOLD') {
+            roundEndTimeRef.current = null;
             setTimerActive(false);
             setTimerSeconds(0);
             setMessage(`🚫 Player marked UNSOLD.`);
+          } else {
+            // WAITING or PAUSED
+            roundEndTimeRef.current = null;
+            setTimerActive(false);
+            if (auction.timerSeconds === 0 || auction.remainingMillis === 0) {
+              setTimerSeconds(0);
+            } else if (auction.remainingMillis !== undefined && auction.remainingMillis !== null) {
+              setTimerSeconds(Number((auction.remainingMillis / 1000).toFixed(2)));
+            } else if (auction.timerSeconds !== undefined && auction.timerSeconds !== null) {
+              setTimerSeconds(Number(auction.timerSeconds));
+            } else {
+              setTimerSeconds(15.00);
+            }
           }
-          fetchInitialData();
         });
 
         // 2. Subscribe to live bids
@@ -113,9 +147,6 @@ function App() {
           setMessage(`🔥 Live Bid! ${newBid.team.name} raised bid to ₹${newBid.amount.toLocaleString('en-IN')}!`);
           
           setActiveHighestBid(newBid);
-          setTimerSeconds(15.00);
-          setTimerActive(true);
-
           fetchInitialData();
         });
 
@@ -150,15 +181,20 @@ function App() {
             if (targetPlayerId) {
               const targetIdx = currentPlayers.findIndex(p => p.id === targetPlayerId);
               if (targetIdx !== -1) {
-                setCurrentIndex(targetIdx);
+                setCurrentIndex(prevIdx => {
+                  if (prevIdx !== targetIdx) {
+                    setMessage(`🎯 BCCI STAGE SYNC: Live lot is now ${data.player?.name || 'Player'}!`);
+                    timerEndRef.current = null;
+                    setTimerSeconds(15.00);
+                    setTimerActive(Boolean(data.timerRunning));
+                  }
+                  return targetIdx;
+                });
               }
             }
             return currentPlayers;
           });
 
-          setMessage(`🎯 BCCI STAGE SYNC: Live lot is now ${data.player?.name || 'Player'}!`);
-          setTimerSeconds(15.00);
-          setTimerActive(true);
           if (targetPlayerId) {
             fetchHighestBid(targetPlayerId);
           }
@@ -169,6 +205,7 @@ function App() {
           const data = JSON.parse(msg.body);
           setMessage(`🔄 Bids reset for ${data.player?.name || 'player'} back to base price!`);
           setActiveHighestBid(null);
+          timerEndRef.current = null;
           setTimerSeconds(15.00);
           setTimerActive(false);
           fetchInitialData();
@@ -186,16 +223,16 @@ function App() {
     };
   }, [user]);
 
+  const activePlayerId = players[currentIndex]?.id;
+
   // Fetch active player's highest bid whenever the active player changes
   useEffect(() => {
-    if (players.length > 0 && players[currentIndex]) {
-      fetchHighestBid(players[currentIndex].id);
-      setTimerSeconds(15.00);
-      setTimerActive(true);
+    if (activePlayerId) {
+      fetchHighestBid(activePlayerId);
     } else {
       setActiveHighestBid(null);
     }
-  }, [currentIndex, players]);
+  }, [activePlayerId]);
 
   const fetchInitialData = async () => {
     if (!user) return;
@@ -223,6 +260,28 @@ function App() {
             amount: auctionRes.data.currentBid,
             team: auctionRes.data.highestBidder
           });
+        }
+        if (auctionRes.data.serverTime) {
+          serverOffsetRef.current = auctionRes.data.serverTime - Date.now();
+        }
+
+        if (auctionRes.data.status === 'LIVE' && auctionRes.data.timerRunning && auctionRes.data.endTimeMillis) {
+          roundEndTimeRef.current = auctionRes.data.endTimeMillis;
+          const nowServer = Date.now() + serverOffsetRef.current;
+          const rem = Math.max(0, (auctionRes.data.endTimeMillis - nowServer) / 1000);
+          setTimerSeconds(Number(rem.toFixed(2)));
+          setTimerActive(true);
+        } else if (auctionRes.data.status === 'SOLD' || auctionRes.data.status === 'UNSOLD') {
+          roundEndTimeRef.current = null;
+          setTimerActive(false);
+          setTimerSeconds(0);
+        } else {
+          roundEndTimeRef.current = null;
+          setTimerActive(false);
+          const rem = auctionRes.data.remainingMillis !== undefined 
+            ? auctionRes.data.remainingMillis / 1000 
+            : (auctionRes.data.timerSeconds !== undefined ? auctionRes.data.timerSeconds : 15.00);
+          setTimerSeconds(Number(rem.toFixed(2)));
         }
       }
     } catch (error) {
@@ -276,6 +335,11 @@ function App() {
       return;
     }
 
+    if (!timerActive && timerSeconds > 0) {
+      setMessage('⏳ Waiting for Auctioneer to start the timer for this lot!');
+      return;
+    }
+
     if (timerSeconds <= 0) {
       setMessage('⏱️ Time is up! Bidding is locked for this player until auctioneer advances the lot.');
       return;
@@ -297,8 +361,6 @@ function App() {
       amount: targetBidAmount,
       team: bidderTeam || { id: user.teamId, name: 'Bidding Team' }
     });
-    setTimerSeconds(15.00);
-    setTimerActive(true);
 
     try {
       const config = {
@@ -320,10 +382,11 @@ function App() {
   };
 
   const formatTimer = (seconds) => {
-    if (seconds <= 0) return '00:00.00';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    const hundredths = Math.round((seconds % 1) * 100);
+    if (!seconds || seconds <= 0) return '00:00.00';
+    const totalSecs = Math.max(0, seconds);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = Math.floor(totalSecs % 60);
+    const hundredths = Math.min(99, Math.floor((totalSecs % 1) * 100));
     
     const minsStr = mins.toString().padStart(2, '0');
     const secsStr = secs.toString().padStart(2, '0');
@@ -338,6 +401,11 @@ function App() {
 
     if (currentPlayer.status === 'SOLD') {
       setMessage('⚠️ Bidding is closed. This player is already sold.');
+      return;
+    }
+
+    if (!timerActive && timerSeconds > 0) {
+      setMessage('⏳ Waiting for Auctioneer to start the timer for this lot!');
       return;
     }
 
@@ -362,8 +430,6 @@ function App() {
       amount: targetBidAmount,
       team: clickedTeam
     });
-    setTimerSeconds(15.00);
-    setTimerActive(true);
 
     try {
       const config = {
@@ -438,6 +504,7 @@ function App() {
 
       await axios.post(`${BACKEND_URL}/api/bids/player/${currentPlayer.id}/reset`, {}, config);
       setActiveHighestBid(null);
+      timerEndRef.current = null;
       setTimerSeconds(15.00);
       setTimerActive(false);
       setMessage(`🔄 Bids reset to base price for ${currentPlayer.name}`);
@@ -462,7 +529,48 @@ function App() {
     }
   };
 
+  const handleStartTimer = async () => {
+    if (!user || user.role !== 'ADMIN') return;
+    const remaining = timerSeconds > 0.05 ? timerSeconds : 15.00;
+    setMessage(remaining < 14.9 ? '⏱️ AUCTIONEER RESUMED THE TIMER!' : '⏱️ AUCTIONEER STARTED THE TIMER! Bidding is now LIVE!');
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.post(`${BACKEND_URL}/api/auction/start-timer`, {
+        timerSeconds: Math.ceil(remaining)
+      }, config);
+    } catch (err) {
+      console.warn('Backend start-timer call warning:', err?.message || err);
+    }
+  };
+
+  const handlePauseTimer = async () => {
+    if (!user || user.role !== 'ADMIN') return;
+    setMessage('⏸️ Timer paused by auctioneer.');
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.post(`${BACKEND_URL}/api/auction/pause-timer`, {
+        timerSeconds: Math.ceil(timerSeconds)
+      }, config);
+    } catch (err) {
+      console.error('Failed to pause timer:', err);
+    }
+  };
+
+  const handleResetTimer = async () => {
+    if (!user || user.role !== 'ADMIN') return;
+    setMessage('⏱️ Timer reset to 15.00s by auctioneer (ON HOLD).');
+    try {
+      const config = { headers: { Authorization: `Bearer ${user.token}` } };
+      await axios.post(`${BACKEND_URL}/api/auction/reset-timer`, {}, config);
+    } catch (err) {
+      console.error('Failed to reset timer:', err);
+    }
+  };
+
   const handleNextPlayer = async () => {
+    timerEndRef.current = null;
+    setTimerSeconds(15.00);
+    setTimerActive(false);
     if (user && user.role === 'ADMIN') {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
@@ -478,6 +586,9 @@ function App() {
   };
 
   const handlePrevPlayer = async () => {
+    timerEndRef.current = null;
+    setTimerSeconds(15.00);
+    setTimerActive(false);
     if (user && user.role === 'ADMIN') {
       try {
         const config = { headers: { Authorization: `Bearer ${user.token}` } };
@@ -552,6 +663,9 @@ function App() {
         currentIndex={currentIndex}
         currentValuation={currentValuation}
         timerValue={formatTimer(timerSeconds)}
+        timerActive={timerActive}
+        timerSeconds={timerSeconds}
+        onToggleTimer={timerActive ? handlePauseTimer : handleStartTimer}
         onOpenAddPlayer={() => setIsAddPlayerModalOpen(true)}
         onLogout={handleLogout}
       />
@@ -609,6 +723,10 @@ function App() {
                 player={displayPlayer}
                 teamTheme={teamTheme}
                 timerSeconds={timerSeconds}
+                timerActive={timerActive}
+                onStartTimer={handleStartTimer}
+                onPauseTimer={handlePauseTimer}
+                onResetTimer={handleResetTimer}
                 onPlaceBid={handlePlaceBid}
                 onSellPlayer={handleSellPlayer}
                 onUnsoldPlayer={handleUnsoldPlayer}

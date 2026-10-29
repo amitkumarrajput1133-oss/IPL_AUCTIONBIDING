@@ -4,7 +4,7 @@
 Open a terminal in the root directory:
 ```bash
 cd backend
-..\mvnw.cmd spring-boot:run
+
 ```
 * Server URL: http://localhost:8082
 * In-Memory H2 Console: http://localhost:8082/h2-console (JDBC URL: `jdbc:h2:mem:ipl_auction_db`, User: `sa`, Password: empty)
