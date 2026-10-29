@@ -22,7 +22,6 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [activeHighestBid, setActiveHighestBid] = useState(null);
-  const [transitioning, setTransitioning] = useState(false);
   const [isAddPlayerModalOpen, setIsAddPlayerModalOpen] = useState(false);
 
   // Timer countdown state
@@ -58,7 +57,7 @@ function App() {
     return () => clearInterval(interval);
   }, [timerActive, loading, user, players, currentIndex]);
 
-  // Fetch initial teams and players once user is logged in
+  // Fetch initial teams, players and active auction room once user is logged in
   useEffect(() => {
     if (!user) return;
     fetchInitialData();
@@ -71,26 +70,60 @@ function App() {
         Authorization: `Bearer ${user.token}`
       },
       onConnect: () => {
-        // Subscribe to live bids
+        // 1. Subscribe to synchronized auction room state
+        stompClient.subscribe('/topic/auction-state', (msg) => {
+          const auction = JSON.parse(msg.body);
+          if (auction.player) {
+            setPlayers(prev => {
+              const idx = prev.findIndex(p => p.id === auction.player.id);
+              if (idx !== -1) {
+                setCurrentIndex(idx);
+              }
+              return prev;
+            });
+          }
+
+          if (auction.highestBidder) {
+            setActiveHighestBid({
+              amount: auction.currentBid,
+              team: auction.highestBidder
+            });
+          } else {
+            setActiveHighestBid(null);
+          }
+
+          if (auction.status === 'LIVE') {
+            setTimerSeconds(15.00);
+            setTimerActive(true);
+          } else if (auction.status === 'SOLD') {
+            setTimerActive(false);
+            setTimerSeconds(0);
+            setMessage(`🎉 HAMMER DOWN! Sold to ${auction.highestBidder ? auction.highestBidder.name : 'Franchise'} for ₹${Number(auction.currentBid).toLocaleString('en-IN')}!`);
+          } else if (auction.status === 'UNSOLD') {
+            setTimerActive(false);
+            setTimerSeconds(0);
+            setMessage(`🚫 Player marked UNSOLD.`);
+          }
+          fetchInitialData();
+        });
+
+        // 2. Subscribe to live bids
         stompClient.subscribe('/topic/bids', (msg) => {
           const newBid = JSON.parse(msg.body);
           setMessage(`🔥 Live Bid! ${newBid.team.name} raised bid to ₹${newBid.amount.toLocaleString('en-IN')}!`);
           
-          // Update active highest bid state instantly from WebSocket broadcast
           setActiveHighestBid(newBid);
-
-          // Reset countdown timer
           setTimerSeconds(15.00);
           setTimerActive(true);
 
           fetchInitialData();
         });
 
-        // Subscribe to final sales
+        // 3. Subscribe to final sales
         stompClient.subscribe('/topic/players', (msg) => {
           const soldPlayer = JSON.parse(msg.body);
           if (soldPlayer.status === 'SOLD') {
-            setMessage(`🎉 HAMMER DOWN! ${soldPlayer.name} SOLD to ${soldPlayer.team.name} for ₹${soldPlayer.basePrice.toLocaleString('en-IN')}!`);
+            setMessage(`🎉 HAMMER DOWN! ${soldPlayer.name} SOLD to ${soldPlayer.team?.name || 'Franchise'}!`);
             setTimerActive(false);
           } else {
             setMessage(`🚫 Player ${soldPlayer.name} marked UNSOLD. Reverted to base price ₹${soldPlayer.basePrice.toLocaleString('en-IN')}.`);
@@ -98,11 +131,10 @@ function App() {
             setTimerActive(false);
             setTimerSeconds(0);
           }
-          
           fetchInitialData();
         });
 
-        // Subscribe to newly drafted players
+        // 4. Subscribe to newly drafted players
         stompClient.subscribe('/topic/player-added', (msg) => {
           const newPlayer = JSON.parse(msg.body);
           setMessage(`✨ NEW DRAFT! ${newPlayer.name} (${newPlayer.role}) added to the IPL auction pool!`);
@@ -158,8 +190,6 @@ function App() {
   useEffect(() => {
     if (players.length > 0 && players[currentIndex]) {
       fetchHighestBid(players[currentIndex].id);
-      
-      // Reset timer on player changes
       setTimerSeconds(15.00);
       setTimerActive(true);
     } else {
@@ -173,20 +203,26 @@ function App() {
       const config = {
         headers: { Authorization: `Bearer ${user.token}` }
       };
-      const [playersRes, teamsRes, activeAuctionRes] = await Promise.all([
+      const [playersRes, teamsRes, auctionRes] = await Promise.all([
         axios.get(`${BACKEND_URL}/api/players`, config),
         axios.get(`${BACKEND_URL}/api/teams`, config),
-        axios.get(`${BACKEND_URL}/api/auction/active`, config).catch(() => ({ data: null }))
+        axios.get(`${BACKEND_URL}/api/auction/active`, config).catch(() => null)
       ]);
       const fetchedPlayers = playersRes.data || [];
       setPlayers(fetchedPlayers);
       setTeams(teamsRes.data || []);
 
-      if (activeAuctionRes && activeAuctionRes.data && activeAuctionRes.data.player) {
-        const activeId = activeAuctionRes.data.player.id;
-        const activeIdx = fetchedPlayers.findIndex(p => p.id === activeId);
-        if (activeIdx !== -1) {
-          setCurrentIndex(activeIdx);
+      if (auctionRes && auctionRes.data && auctionRes.data.player) {
+        const activePlayerId = auctionRes.data.player.id;
+        const foundIdx = fetchedPlayers.findIndex(p => p.id === activePlayerId);
+        if (foundIdx !== -1) {
+          setCurrentIndex(foundIdx);
+        }
+        if (auctionRes.data.highestBidder) {
+          setActiveHighestBid({
+            amount: auctionRes.data.currentBid,
+            team: auctionRes.data.highestBidder
+          });
         }
       }
     } catch (error) {
@@ -217,17 +253,9 @@ function App() {
     }
   };
 
-  const [transitionUser, setTransitionUser] = useState(null);
-
   const handleLoginSuccess = (loginData) => {
-    setTransitionUser(loginData);
-    setTransitioning(true);
-    setTimeout(() => {
-      sessionStorage.setItem('ipl_user', JSON.stringify(loginData));
-      setUser(loginData);
-      setTransitioning(false);
-      setTransitionUser(null);
-    }, 2200);
+    sessionStorage.setItem('ipl_user', JSON.stringify(loginData));
+    setUser(loginData);
   };
 
   const handleLogout = () => {
@@ -252,32 +280,18 @@ function App() {
       setMessage('⏱️ Time is up! Bidding is locked for this player until auctioneer advances the lot.');
       return;
     }
-
-    let targetBidAmount = 0;
     const currentPrice = activeHighestBid ? activeHighestBid.amount : currentPlayer.basePrice;
+    const targetBidAmount = isIncremental ? currentPrice + amount : amount;
 
-    if (isIncremental) {
-      // Dynamic Scaling: if current price is less than 10 Lakhs (e.g. 240,000), 
-      // scale down the increments (20L -> 20k, 50L -> 50k, 1Cr -> 100k) to match database scaling.
-      let incrementAmount = amount;
-      if (currentPrice < 1000000) {
-        if (amount === 2000000) incrementAmount = 20000;
-        else if (amount === 5000000) incrementAmount = 50000;
-        else if (amount === 10000000) incrementAmount = 100000;
-      }
-      targetBidAmount = currentPrice + incrementAmount;
-    } else {
-      if (amount <= currentPrice) {
-        setMessage(`⚠️ Bid must be higher than current bid (₹${currentPrice.toLocaleString('en-IN')})!`);
-        return;
-      }
-      targetBidAmount = amount;
+    if (targetBidAmount <= currentPrice) {
+      setMessage(`⚠️ Bid must be higher than current bid (₹${Number(currentPrice).toLocaleString('en-IN')})!`);
+      return;
     }
 
     const previousBid = activeHighestBid;
     const bidderTeam = teams.find(t => t.id === user.teamId);
 
-    // Optimistic UI Update: change state immediately so user sees the change directly
+    // Optimistic UI Update
     setActiveHighestBid({
       id: Date.now(),
       amount: targetBidAmount,
@@ -301,7 +315,6 @@ function App() {
     } catch (err) {
       const errMsg = err.response?.data?.error || err.message;
       setMessage(`❌ Bidding Error: ${errMsg}`);
-      // Revert optimistic update on failure
       setActiveHighestBid(previousBid);
     }
   };
@@ -333,26 +346,17 @@ function App() {
       return;
     }
 
-    // Role-based restrictions
-    if (user.role === 'TEAM_OWNER') {
-      if (user.teamId !== clickedTeam.id) {
-        setMessage('⚠️ You cannot place a bid on behalf of another team!');
-        return;
-      }
+    if (user.role === 'TEAM_OWNER' && user.teamId !== clickedTeam.id) {
+      setMessage('⚠️ You cannot place a bid on behalf of another team!');
+      return;
     }
 
-    // Bid Calculation
     const currentPrice = activeHighestBid ? activeHighestBid.amount : currentPlayer.basePrice;
-    
-    let incrementAmount = 2000000; // default 20L
-    if (currentPrice < 1000000) {
-      incrementAmount = 20000; // scale down to 20k if current price is in thousands
-    }
-    const targetBidAmount = activeHighestBid ? currentPrice + incrementAmount : currentPrice; // increment or start with base price
+    const incrementAmount = 2000000; // Standard 20 Lakhs increment
+    const targetBidAmount = activeHighestBid ? currentPrice + incrementAmount : currentPrice;
 
     const previousBid = activeHighestBid;
 
-    // Optimistic UI Update: change state immediately so user sees the change directly
     setActiveHighestBid({
       id: Date.now(),
       amount: targetBidAmount,
@@ -376,7 +380,6 @@ function App() {
     } catch (err) {
       const errMsg = err.response?.data?.error || err.message;
       setMessage(`❌ Bidding Error: ${errMsg}`);
-      // Revert optimistic update on failure
       setActiveHighestBid(previousBid);
     }
   };
@@ -459,27 +462,33 @@ function App() {
     }
   };
 
-  const handleNextPlayer = () => {
-    if (currentIndex < players.length - 1) {
-      const nextIdx = currentIndex + 1;
-      const nextPlayer = players[nextIdx];
-      setCurrentIndex(nextIdx);
-      setMessage('');
-      if (user.role === 'ADMIN' && nextPlayer) {
-        broadcastActiveLot(nextPlayer.id);
+  const handleNextPlayer = async () => {
+    if (user && user.role === 'ADMIN') {
+      try {
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        await axios.post(`${BACKEND_URL}/api/auction/next`, {}, config);
+        setMessage('');
+      } catch (err) {
+        console.error('Failed to cycle next player:', err);
       }
+    } else if (currentIndex < players.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+      setMessage('');
     }
   };
 
-  const handlePrevPlayer = () => {
-    if (currentIndex > 0) {
-      const prevIdx = currentIndex - 1;
-      const prevPlayer = players[prevIdx];
-      setCurrentIndex(prevIdx);
-      setMessage('');
-      if (user.role === 'ADMIN' && prevPlayer) {
-        broadcastActiveLot(prevPlayer.id);
+  const handlePrevPlayer = async () => {
+    if (user && user.role === 'ADMIN') {
+      try {
+        const config = { headers: { Authorization: `Bearer ${user.token}` } };
+        await axios.post(`${BACKEND_URL}/api/auction/prev`, {}, config);
+        setMessage('');
+      } catch (err) {
+        console.error('Failed to cycle prev player:', err);
       }
+    } else if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+      setMessage('');
     }
   };
 
@@ -504,44 +513,6 @@ function App() {
     );
   }
 
-  if (transitioning) {
-    const teamTitle = transitionUser?.team?.name || transitionUser?.teamName || (transitionUser?.role === 'ADMIN' ? 'GLOBAL AUCTIONEER' : transitionUser?.username?.toUpperCase()) || 'IPL FRANCHISE';
-    return (
-      <div className="telemetry-warp-loader">
-        <div className="warp-ambient-mesh"></div>
-        <div className="warp-core">
-          <div className="warp-ring-outer"></div>
-          <div className="warp-ring-inner"></div>
-          <div className="pulse-circle">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.8" className="warp-check-svg">
-              <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </div>
-          <div className="scan-line-hud"></div>
-        </div>
-
-        <div className="warp-badge font-mono">
-          <span className="warp-status-dot"></span> PASSWORD VERIFIED • IDENTITY SECURED
-        </div>
-
-        <h2 className="warp-title font-display">ENTERING WAR ROOM ARENA</h2>
-        <div className="warp-subtitle font-mono">
-          DOCKING LIVE SESSION FOR: <span className="warp-team-name">{teamTitle}</span>
-        </div>
-
-        <div className="warp-progress-track">
-          <div className="warp-progress-bar"></div>
-        </div>
-
-        <div className="warp-log font-mono">
-          <div className="log-line line-1">✔ [DECRYPT] KEY SIGNATURE VALIDATED</div>
-          <div className="log-line line-2">✔ [WEBSOCKET] LIVE STOMP PROTOCOL DOCKED (PORT 8082)</div>
-          <div className="log-line line-3">✔ [INITIALIZE] LAUNCHING ORBIT ARENA &amp; LIVE SQUADS</div>
-        </div>
-      </div>
-    );
-  }
-
   // Render Login Card if not authenticated
   if (!user) {
     return <Login onLoginSuccess={handleLoginSuccess} backendUrl={BACKEND_URL} />;
@@ -551,7 +522,6 @@ function App() {
   const activeTeam = teams.find(t => t.id === user.teamId);
   const teamTheme = getTeamTheme(user, activeTeam);
 
-  // Augment current player displaying current highest bid price
   const displayPlayer = currentPlayer ? {
     ...currentPlayer,
     basePrice: activeHighestBid ? activeHighestBid.amount : currentPlayer.basePrice,
@@ -674,7 +644,6 @@ function App() {
                     <span className="pulse-dot"></span> MONITORING ACTIVE
                   </div>
                   
-                  {/* Sleek mini list of team budgets */}
                   <div className="mini-leaderboard font-mono">
                     {teams.slice(0, 5).map(t => {
                       const alias = t.name.split(' ').map(w => w[0]).join('');
@@ -688,7 +657,7 @@ function App() {
                   </div>
                 </div>
               )}
-              <div className="panel-footer font-mono">SYSTEM SECURITY: UNFORCED</div>
+              <div className="panel-footer font-mono">SYSTEM SECURITY: ACTIVE</div>
             </div>
           </div>
 

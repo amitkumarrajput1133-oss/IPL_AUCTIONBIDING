@@ -1,5 +1,7 @@
 package com.ipl.auction.config;
 
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -10,8 +12,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -51,12 +51,20 @@ public class SecurityConfig {
                 .requestMatchers("/", "/health", "/api/health").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/ws-auction/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/auction/active/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/players/*/sell", "/api/players/*/unsold").hasRole("ADMIN")
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                .requestMatchers("/h2-console/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/players/**", "/api/teams/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/auction/active", "/api/bids/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/auction/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/players").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/players/*", "/api/players/*/sell", "/api/players/*/unsold").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/players/*").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.POST, "/api/bids").hasAnyRole("TEAM_OWNER", "ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/bids/player/*/reset").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
             .addFilterBefore(new TokenAuthenticationFilter(tokenUtil), UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
-}
+}

@@ -21,3 +21,6 @@ Thumbs.db
 member_packages/
 *.zip
 *.exe
+
+# Local session logs
+WORK_LOG.md
