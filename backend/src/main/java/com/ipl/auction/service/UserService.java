@@ -36,19 +36,27 @@ public class UserService {
             throw new RuntimeException("Invalid username or password");
         }
 
+        String role = user.getRole();
+        if (role != null && role.startsWith("ROLE_")) {
+            role = role.substring(5);
+        }
+
         String token = tokenUtil.generateToken(user);
         Long teamId = user.getTeam() != null ? user.getTeam().getId() : null;
         String teamName = user.getTeam() != null ? user.getTeam().getName() : null;
 
-        return new LoginResponse(token, user.getUsername(), user.getRole(), teamId, teamName);
+        return new LoginResponse(token, user.getUsername(), role, teamId, teamName);
     }
 
     public User register(User user) {
         if (userRepository.findByUsername(user.getUsername()).isPresent()) {
             throw new RuntimeException("Username already exists");
         }
+        user.setRole("TEAM_OWNER");
         user.setPassword(passwordEncoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        saved.setPassword(null);
+        return saved;
     }
 
     @Transactional
@@ -69,7 +77,7 @@ public class UserService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("ROLE_TEAM_OWNER");
+        user.setRole("TEAM_OWNER");
         user.setTeam(team);
         User savedUser = userRepository.save(user);
 

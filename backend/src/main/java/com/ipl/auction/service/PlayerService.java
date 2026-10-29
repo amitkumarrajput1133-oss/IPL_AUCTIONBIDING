@@ -2,16 +2,15 @@ package com.ipl.auction.service;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.ipl.auction.model.Auction;
-import com.ipl.auction.model.Auction.AuctionStatus;
+import com.ipl.auction.model.Bid;
 import com.ipl.auction.model.Player;
 import com.ipl.auction.model.Player.PlayerStatus;
 import com.ipl.auction.model.Team;
-import com.ipl.auction.repository.AuctionRepository;
 import com.ipl.auction.repository.BidRepository;
 import com.ipl.auction.repository.PlayerRepository;
 import com.ipl.auction.repository.TeamRepository;
@@ -22,25 +21,32 @@ public class PlayerService {
     private final PlayerRepository playerRepository;
     private final TeamRepository teamRepository;
     private final BidRepository bidRepository;
-    private final AuctionRepository auctionRepository;
+    private final AuctionService auctionService;
 
-    public PlayerService(PlayerRepository playerRepository, TeamRepository teamRepository, BidRepository bidRepository, AuctionRepository auctionRepository) {
+    public PlayerService(
+            PlayerRepository playerRepository,
+            TeamRepository teamRepository,
+            BidRepository bidRepository,
+            AuctionService auctionService) {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
         this.bidRepository = bidRepository;
-        this.auctionRepository = auctionRepository;
+        this.auctionService = auctionService;
     }
 
     public List<Player> getAllPlayers() {
         return playerRepository.findAll();
     }
 
-    public java.util.Optional<Player> getPlayerById(Long id) {
+    public Optional<Player> getPlayerById(Long id) {
         return playerRepository.findById(id);
     }
 
     @Transactional
     public Player createPlayer(Player player) {
+        if (player.getOriginalBasePrice() == null) {
+            player.setOriginalBasePrice(player.getBasePrice());
+        }
         if (player.getStatus() == null) {
             player.setStatus(PlayerStatus.UNSOLD);
         }
@@ -71,65 +77,67 @@ public class PlayerService {
     }
 
     @Transactional
-    public Player sellPlayer(Long playerId, Long teamId, BigDecimal finalPrice) {
+    public Player sellPlayer(Long playerId, Long requestedTeamId, BigDecimal requestedFinalPrice) {
         Player player = playerRepository.findByIdForUpdate(playerId)
-                .orElseThrow(() -> new RuntimeException("Player not found"));
-        Team team = teamRepository.findByIdForUpdate(teamId)
-                .orElseThrow(() -> new RuntimeException("Team not found"));
+                .orElseThrow(() -> new RuntimeException("Player not found with id: " + playerId));
 
-        BigDecimal teamBudget = team.getBudget() != null ? team.getBudget() : BigDecimal.ZERO;
-
-        if (teamBudget.compareTo(finalPrice) < 0) {
-            throw new RuntimeException("Team does not have sufficient budget!");
+        // Server-side source of truth: retrieve the highest bid recorded in BidRepository
+        List<Bid> bids = bidRepository.findByPlayerIdOrderByAmountDesc(playerId);
+        if (bids.isEmpty()) {
+            throw new RuntimeException("Cannot sell player with no bids placed!");
         }
 
-        // Verify squad limit (maximum 25 players allowed per franchise roster)
-        long currentSquadSize = playerRepository.countByTeamId(teamId);
+        Bid highestBid = bids.get(0);
+        Team winningTeam = highestBid.getTeam();
+        BigDecimal winningPrice = highestBid.getAmount();
+
+        Team team = teamRepository.findByIdForUpdate(winningTeam.getId())
+                .orElseThrow(() -> new RuntimeException("Winning team not found with id: " + winningTeam.getId()));
+
+        BigDecimal teamBudget = team.getBudget() != null ? team.getBudget() : BigDecimal.ZERO;
+        if (teamBudget.compareTo(winningPrice) < 0) {
+            throw new RuntimeException("Winning team does not have sufficient budget!");
+        }
+
+        long currentSquadSize = playerRepository.countByTeamId(team.getId());
         if (currentSquadSize >= 25) {
             throw new RuntimeException("Team has already reached the maximum squad limit of 25 players!");
         }
 
-        // Verify overseas quota (maximum 8 overseas players allowed per franchise roster if the player is overseas)
         if (player.isOverseas()) {
-            long overseasCount = playerRepository.countByTeamIdAndOverseasTrue(teamId);
+            long overseasCount = playerRepository.countByTeamIdAndOverseasTrue(team.getId());
             if (overseasCount >= 8) {
                 throw new RuntimeException("Team has already reached the maximum limit of 8 overseas players!");
             }
         }
 
         // Deduct budget
-        team.setBudget(teamBudget.subtract(finalPrice));
+        team.setBudget(teamBudget.subtract(winningPrice));
         teamRepository.save(team);
 
-        // Assign player to team & mark SOLD using enum
+        // Assign player to team & mark SOLD (do NOT mutate base price)
         player.setTeam(team);
         player.setStatus(PlayerStatus.SOLD);
-        player.setBasePrice(finalPrice);
+        Player saved = playerRepository.save(player);
 
-        Player savedPlayer = playerRepository.save(player);
+        // Update synchronized auction state
+        auctionService.recordSold(saved, team, winningPrice);
 
-        auctionRepository.findByStatus(AuctionStatus.LIVE).ifPresent(auction -> {
-            if (auction.getPlayer() != null && auction.getPlayer().getId().equals(playerId)) {
-                auction.setStatus(AuctionStatus.COMPLETED);
-                auction.setCurrentBid(finalPrice);
-                auction.setHighestBidder(team);
-                auctionRepository.save(auction);
-            }
-        });
-
-        return savedPlayer;
+        return saved;
     }
 
     @Transactional
     public Player markUnsold(Long playerId) {
         Player player = playerRepository.findByIdForUpdate(playerId)
-                .orElseThrow(() -> new RuntimeException("Player not found"));
-        
-        // If it was previously sold, refund the team's budget
+                .orElseThrow(() -> new RuntimeException("Player not found with id: " + playerId));
+
+        // If previously sold, refund the winning team
         if (player.getStatus() == PlayerStatus.SOLD && player.getTeam() != null) {
             Team team = teamRepository.findByIdForUpdate(player.getTeam().getId())
                     .orElseThrow(() -> new RuntimeException("Team not found"));
-            team.setBudget(team.getBudget().add(player.getBasePrice()));
+            List<Bid> bids = bidRepository.findByPlayerIdOrderByAmountDesc(playerId);
+            BigDecimal refundAmount = !bids.isEmpty() ? bids.get(0).getAmount() : player.getBasePrice();
+            team.setBudget(team.getBudget().add(refundAmount));
             teamRepository.save(team);
         }
 
@@ -141,16 +149,10 @@ public class PlayerService {
         BigDecimal original = player.getOriginalBasePrice() != null ? player.getOriginalBasePrice() : player.getBasePrice();
         player.setBasePrice(original);
 
-        Player savedPlayer = playerRepository.save(player);
+        Player saved = playerRepository.save(player);
 
-        auctionRepository.findByStatus(AuctionStatus.LIVE).ifPresent(auction -> {
-            if (auction.getPlayer() != null && auction.getPlayer().getId().equals(playerId)) {
-                auction.setCurrentBid(original);
-                auction.setHighestBidder(null);
-                auctionRepository.save(auction);
-            }
-        });
+        auctionService.recordUnsold(saved);
 
-        return savedPlayer;
+        return saved;
     }
 }

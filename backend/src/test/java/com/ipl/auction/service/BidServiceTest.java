@@ -40,6 +40,9 @@ public class BidServiceTest {
     @Mock
     private AuctionRepository auctionRepository;
 
+    @Mock
+    private AuctionService auctionService;
+
     @InjectMocks
     private BidService bidService;
 
@@ -80,10 +83,10 @@ public class BidServiceTest {
         assertEquals(bidAmount, result.getAmount());
         assertEquals(teamcsk, result.getTeam());
         assertEquals(player, result.getPlayer());
-        assertEquals(bidAmount, player.getBasePrice()); // Player base price updated to leading bid
+        assertEquals(new BigDecimal("20000000"), player.getBasePrice()); // Immutable base price preserved
 
-        verify(playerRepository, times(1)).save(player);
         verify(bidRepository, times(1)).save(any(Bid.class));
+        verify(auctionService, times(1)).recordBid(player, teamcsk, bidAmount);
     }
 
     @Test
@@ -99,7 +102,7 @@ public class BidServiceTest {
             bidService.placeBid(1L, 10L, bidAmount);
         });
 
-        assertTrue(exception.getMessage().contains("does not have enough budget"));
+        assertTrue(exception.getMessage().contains("does not have sufficient budget"));
         verify(bidRepository, never()).save(any(Bid.class));
     }
 
@@ -149,7 +152,7 @@ public class BidServiceTest {
             bidService.placeBid(1L, 20L, bidAmount);
         });
 
-        assertTrue(exception.getMessage().contains("must be higher than the current highest bid"));
+        assertTrue(exception.getMessage().contains("must be higher than current highest bid"));
         verify(bidRepository, never()).save(any(Bid.class));
     }
 

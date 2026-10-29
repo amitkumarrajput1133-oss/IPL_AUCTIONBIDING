@@ -2,6 +2,7 @@ package com.ipl.auction.model;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "auctions")
@@ -11,7 +12,7 @@ public class Auction {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne
+    @ManyToOne
     @JoinColumn(name = "player_id")
     private Player player;
 
@@ -22,19 +23,21 @@ public class Auction {
     private BigDecimal currentBid;
 
     @Enumerated(EnumType.STRING)
-    private AuctionStatus status = AuctionStatus.LIVE;
+    private AuctionStatus status = AuctionStatus.WAITING;
 
-    // Concurrency control for live bidding
+    private Integer timerSeconds = 15;
+
+    private LocalDateTime roundEndTime;
+
     @Version
     private Long version;
 
     public enum AuctionStatus {
-        UPCOMING, LIVE, COMPLETED
+        WAITING, LIVE, SOLD, UNSOLD
     }
 
     public Auction() {}
 
-    // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -49,6 +52,12 @@ public class Auction {
 
     public AuctionStatus getStatus() { return status; }
     public void setStatus(AuctionStatus status) { this.status = status; }
+
+    public Integer getTimerSeconds() { return timerSeconds; }
+    public void setTimerSeconds(Integer timerSeconds) { this.timerSeconds = timerSeconds; }
+
+    public LocalDateTime getRoundEndTime() { return roundEndTime; }
+    public void setRoundEndTime(LocalDateTime roundEndTime) { this.roundEndTime = roundEndTime; }
 
     public Long getVersion() { return version; }
 }
