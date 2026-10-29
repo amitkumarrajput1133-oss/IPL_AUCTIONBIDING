@@ -24,3 +24,4 @@ member_packages/
 
 # Local session logs
 WORK_LOG.md
+*.log
