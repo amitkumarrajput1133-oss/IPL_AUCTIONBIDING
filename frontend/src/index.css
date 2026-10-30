@@ -457,6 +457,40 @@ body {
   border: 1px solid var(--team-border-tint, rgba(255, 255, 255, 0.08));
 }
 
+.timer-status-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 2px;
+}
+
+.timer-status-pill {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+}
+
+.timer-status-pill.live {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  animation: pulse-glow 1s infinite alternate;
+}
+
+.timer-status-pill.still {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.timer-status-pill.expired {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
 .timer-label {
   font-size: 0.65rem;
   color: #64748b;
@@ -467,9 +501,23 @@ body {
 .timer-value {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 1.5rem;
-  color: #10b981;
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
   font-weight: 700;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+}
+
+.timer-value.timer-running {
+  color: #10b981;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.timer-value.timer-still {
+  color: #38bdf8;
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+}
+
+.timer-value.timer-zero {
+  color: #ef4444;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
 }
 
 .user-profile-widget {
@@ -1386,6 +1434,45 @@ body {
   white-space: nowrap;
 }
 
+.start-timer-button {
+  background: rgba(6, 182, 212, 0.18);
+  border: 1px solid rgba(6, 182, 212, 0.55);
+  color: #38bdf8;
+}
+
+.start-timer-button:hover:not(.disabled) {
+  background: #06b6d4;
+  color: #020617;
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.7);
+  transform: translateY(-2px);
+}
+
+.pause-button {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  color: #fbbf24;
+}
+
+.pause-button:hover:not(.disabled) {
+  background: #f59e0b;
+  color: #020617;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.7);
+  transform: translateY(-2px);
+}
+
+.reset-timer-button {
+  background: rgba(14, 165, 233, 0.16);
+  border: 1px solid rgba(14, 165, 233, 0.55);
+  color: #38bdf8;
+}
+
+.reset-timer-button:hover:not(.disabled) {
+  background: #0284c7;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.7);
+  transform: translateY(-2px);
+}
+
 .hammer-button {
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.4);
@@ -1579,6 +1666,18 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.35);
   padding: 0.45rem 0.6rem;
   border-radius: 4px;
+}
+
+.timer-waiting-banner {
+  text-align: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.4);
+  padding: 0.45rem 0.6rem;
+  border-radius: 4px;
+  animation: pulse-glow 2s infinite alternate;
 }
 
 .bid-increment-btn:disabled,

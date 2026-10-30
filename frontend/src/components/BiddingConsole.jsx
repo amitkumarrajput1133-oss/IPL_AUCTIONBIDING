@@ -5,6 +5,10 @@ function BiddingConsole({
   player,
   teamTheme,
   timerSeconds,
+  timerActive,
+  onStartTimer,
+  onPauseTimer,
+  onResetTimer,
   onPlaceBid,
   onSellPlayer,
   onUnsoldPlayer,
@@ -23,6 +27,8 @@ function BiddingConsole({
   const isAdmin = user.role === 'ADMIN';
   const isOwner = user.role === 'TEAM_OWNER';
   const isTimerExpired = timerSeconds !== undefined && timerSeconds <= 0;
+  const isWaitingForAdmin = !timerActive && timerSeconds !== undefined && timerSeconds > 0;
+  const isBiddingDisabled = isTimerExpired || isWaitingForAdmin;
 
   const theme = teamTheme || {
     name: 'FRANCHISE',
@@ -35,7 +41,7 @@ function BiddingConsole({
 
   const handleCustomSubmit = (e) => {
     e.preventDefault();
-    if (isTimerExpired) return;
+    if (isBiddingDisabled) return;
     const val = Number(customBidStr);
     if (!val || isNaN(val)) return;
     onPlaceBid(val, false); // false indicates absolute amount
@@ -67,6 +73,22 @@ function BiddingConsole({
           </div>
           
           <div className="action-buttons-row">
+            <button
+              onClick={timerActive ? onPauseTimer : onStartTimer}
+              disabled={isSold}
+              className={`action-button ${timerActive ? 'pause-button' : 'start-timer-button'} font-mono ${isSold ? 'disabled' : ''}`}
+              title={timerActive ? "Pause the countdown timer" : "Start auction countdown timer"}
+            >
+              {timerActive ? '⏸ PAUSE TIMER' : (timerSeconds > 0 && timerSeconds < 14.99 ? '▶ RESUME TIMER' : '▶ START TIMER')}
+            </button>
+            <button
+              onClick={onResetTimer}
+              disabled={isSold}
+              className={`action-button reset-timer-button font-mono ${isSold ? 'disabled' : ''}`}
+              title="Reset countdown timer back to 15 seconds (on hold)"
+            >
+              ⏱️ RESET TIMER
+            </button>
             <button
               onClick={onSellPlayer}
               disabled={isSold}
@@ -134,6 +156,11 @@ function BiddingConsole({
           
           {!isSold ? (
             <div className="bidding-actions">
+              {isWaitingForAdmin && (
+                <div className="timer-waiting-banner font-mono">
+                  ⏳ TIMER ON HOLD • WAITING FOR AUCTIONEER TO START
+                </div>
+              )}
               {isTimerExpired && (
                 <div className="timer-expired-banner font-mono">
                   ⏱️ TIME EXPIRED • BIDDING LOCKED
@@ -142,25 +169,25 @@ function BiddingConsole({
               <div className="increment-row">
                 <button
                   onClick={() => onPlaceBid(2000000, true)} // true indicates incremental
-                  disabled={isTimerExpired}
-                  className={`bid-increment-btn l20 font-mono ${isTimerExpired ? 'disabled' : ''}`}
-                  title={isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹20 Lakhs"}
+                  disabled={isBiddingDisabled}
+                  className={`bid-increment-btn l20 font-mono ${isBiddingDisabled ? 'disabled' : ''}`}
+                  title={isWaitingForAdmin ? "Waiting for Auctioneer to start timer" : isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹20 Lakhs"}
                 >
                   <span className="btn-plus">+</span>₹20L
                 </button>
                 <button
                   onClick={() => onPlaceBid(5000000, true)}
-                  disabled={isTimerExpired}
-                  className={`bid-increment-btn l50 font-mono ${isTimerExpired ? 'disabled' : ''}`}
-                  title={isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹50 Lakhs"}
+                  disabled={isBiddingDisabled}
+                  className={`bid-increment-btn l50 font-mono ${isBiddingDisabled ? 'disabled' : ''}`}
+                  title={isWaitingForAdmin ? "Waiting for Auctioneer to start timer" : isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹50 Lakhs"}
                 >
                   <span className="btn-plus">+</span>₹50L
                 </button>
                 <button
                   onClick={() => onPlaceBid(10000000, true)}
-                  disabled={isTimerExpired}
-                  className={`bid-increment-btn c1 font-mono ${isTimerExpired ? 'disabled' : ''}`}
-                  title={isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹1 Crore"}
+                  disabled={isBiddingDisabled}
+                  className={`bid-increment-btn c1 font-mono ${isBiddingDisabled ? 'disabled' : ''}`}
+                  title={isWaitingForAdmin ? "Waiting for Auctioneer to start timer" : isTimerExpired ? "Bidding locked: timer expired" : "Bid +₹1 Crore"}
                 >
                   <span className="btn-plus">+</span>₹1Cr
                 </button>
@@ -169,16 +196,16 @@ function BiddingConsole({
               <form onSubmit={handleCustomSubmit} className="custom-bid-form">
                 <input
                   type="number"
-                  placeholder={isTimerExpired ? "Bidding locked (Time expired)" : "Custom bid amount (₹)"}
+                  placeholder={isWaitingForAdmin ? "Waiting for Auctioneer to start timer" : isTimerExpired ? "Bidding locked (Time expired)" : "Custom bid amount (₹)"}
                   value={customBidStr}
                   onChange={(e) => setCustomBidStr(e.target.value)}
-                  disabled={isTimerExpired}
-                  className={`custom-bid-input font-mono ${isTimerExpired ? 'disabled' : ''}`}
+                  disabled={isBiddingDisabled}
+                  className={`custom-bid-input font-mono ${isBiddingDisabled ? 'disabled' : ''}`}
                 />
                 <button 
                   type="submit" 
-                  disabled={isTimerExpired}
-                  className={`custom-bid-submit font-mono ${isTimerExpired ? 'disabled' : ''}`}
+                  disabled={isBiddingDisabled}
+                  className={`custom-bid-submit font-mono ${isBiddingDisabled ? 'disabled' : ''}`}
                 >
                   BID NOW
                 </button>

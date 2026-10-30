@@ -8,7 +8,10 @@ function FranchiseHeader({
   currentIndex, 
   currentValuation, 
   timerValue,
-  onOpenAddPlayer,
+  timerActive,
+  timerSeconds,
+  onToggleTimer,
+  onOpenAddPlayer, 
   onLogout 
 }) {
   // Format budget or valuation into Cr (Crores)
@@ -45,9 +48,21 @@ function FranchiseHeader({
         </div>
       </div>
 
-      <div className="header-timer">
-        <span className="timer-label font-mono">AUCTION TIMER</span>
-        <span className="timer-value font-mono">{timerValue || '00:00.00'}</span>
+      <div 
+        className="header-timer" 
+        onClick={isAdmin ? onToggleTimer : undefined} 
+        style={{ cursor: isAdmin ? "pointer" : "default" }} 
+        title={isAdmin ? (timerActive ? "Click to Pause Timer" : "Click to Start Timer") : "Auction Countdown Timer"}
+      >
+        <div className="timer-status-row font-mono">
+          <span className={`timer-status-pill ${timerActive ? 'live' : (timerSeconds <= 0 ? 'expired' : 'still')}`}>
+            {timerActive ? '● LIVE' : (timerSeconds <= 0 ? '■ EXPIRED' : '❚❚ ON HOLD')}
+          </span>
+          <span className="timer-label">AUCTION TIMER</span>
+        </div>
+        <span className={`timer-value font-mono ${timerActive ? 'timer-running' : (timerSeconds <= 0 ? 'timer-zero' : 'timer-still')}`}>
+          {timerValue || '00:00.00'}
+        </span>
       </div>
 
       <div className="user-profile-widget">

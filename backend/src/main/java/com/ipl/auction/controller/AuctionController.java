@@ -1,10 +1,13 @@
 package com.ipl.auction.controller;
 
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,5 +44,28 @@ public class AuctionController {
     @PostMapping("/prev")
     public ResponseEntity<Auction> prevPlayer() {
         return ResponseEntity.ok(auctionService.previousPlayer());
+    }
+
+    @PostMapping("/start-timer")
+    public ResponseEntity<Auction> startTimer(@RequestBody(required = false) Map<String, Object> body) {
+        Integer seconds = null;
+        if (body != null && body.containsKey("timerSeconds") && body.get("timerSeconds") != null) {
+            seconds = ((Number) body.get("timerSeconds")).intValue();
+        }
+        return ResponseEntity.ok(auctionService.startTimer(seconds));
+    }
+
+    @PostMapping("/pause-timer")
+    public ResponseEntity<Auction> pauseTimer(@RequestBody(required = false) Map<String, Object> body) {
+        Integer seconds = null;
+        if (body != null && body.containsKey("timerSeconds") && body.get("timerSeconds") != null) {
+            seconds = ((Number) body.get("timerSeconds")).intValue();
+        }
+        return ResponseEntity.ok(auctionService.pauseTimer(seconds));
+    }
+
+    @PostMapping("/reset-timer")
+    public ResponseEntity<Auction> resetTimer() {
+        return ResponseEntity.ok(auctionService.resetTimer());
     }
 }
